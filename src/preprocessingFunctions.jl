@@ -4,32 +4,6 @@ using NaNStatistics
 using Optim
 using DelimitedFiles
 
-### Structs used
-struct hyperParameters
-    sampleRate              ::Int64          # [Hz] Sample rate.
-    unloadingFitRange       ::Int64          # [-] Vector samples lengths (measured from start of unloading) to be included in unload fit.
-    unloadingFitFunction    ::String         # [string] Function to use when fitting.
-    compensateCreep         ::Bool           # [Bool] Compensate creep using Feng's method, y/n
-    constrainHead           ::Int            # Experimental, not implemented
-    constrainTail           ::Int            # Experimental, not implemented
-    machineCompliance       ::Float64        # Machine compliance
-end
-
-struct control
-    plotMode                ::Bool           # Activates plotting of intermediate results
-    verboseMode             ::Bool           # Verbose output
-end
-
-struct metaInfoExperimentalSeries
-    designatedName          ::String         # Designated name
-    relativeHumidity        ::Float64        # Relative humidity
-    indenterType            ::String
-    indentationNormal       ::String
-    springConstant          ::Float64
-    areaFile                ::String
-    targetDir               ::String
-    thermalHoldTime         ::Int64          # Should be changed to something of unit "second".
-end
 
 """
 ReadIBW(filename) 
@@ -38,7 +12,7 @@ Reads a .IBW binary file, extracting the position and force signal of the AFM in
 
 filename is the string to a file which either needs to be absolute or on the path.
 """
-function readIBW(filename)
+function readIBW(filename::String)
 
     A = open( filename, "r")   
     firstByte = read(A, Int8)
@@ -147,32 +121,17 @@ function IBWtoTXT(filename::String)
     data = readIBW(filename)
     lengthOfData = length(data) ÷ 3
 
-    #t = data[1:lengthOfData]
     y = data[lengthOfData+1:2*lengthOfData]
     x = data[2*lengthOfData+1:3*lengthOfData]
     return [x y]
 end
 
 
-"""
-dataPreProcessing(filename::String) is a vestigal function from the porting from MATLAB. It reads the IBW files and converts to SI units.
-"""
-function dataPreProcessing(filename::String)
-    xy0 = IBWtoTXT(filename)
-    # Import signal
-    xy0 .*= 1e9     
-    # Convert to nano-meters
-
-    return xy0
-end
-
-
-
 function offsetAndDriftCompensation(xy::Matrix{Float32})
     endRangeBaseFit = 25;
     breakForContact = true;
     aLoop = 0;
-    basefit = 0
+    basefit = 0;
 
     while breakForContact
         aLoop += 1
@@ -185,11 +144,9 @@ function offsetAndDriftCompensation(xy::Matrix{Float32})
         if dPdt > 3.3  && aLoop > 3
             basefit = endRangeBaseFit*(aLoop-1);
             breakForContact = false;
-            #println("if")
         elseif endRangeBaseFit*aLoop > 1000
             basefit = endRangeBaseFit*7;
             breakForContact = false;
-            #println("elseif")
         end
     end
    
@@ -219,6 +176,10 @@ function subdirImport(placeToLook::String,stringToMatch::String)
     return filter(x-> contains(x, stringToMatch) , readdir(placeToLook))
 end
 
+"""
+findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String) takes as input a 2xN vector
+and finds the first/last entry larger than a specific value.
+"""
 function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     # 1. Determine range of deflection values.
     # 2. Bin the values (heuristic bin size at the moment)
@@ -249,11 +210,10 @@ function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     end
 
     return returnIdx
-
 end
 
 
-function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHoldTime::Int64,ctrl::control)
+function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHoldTime::Int64,ctrl::control,noiseMultiplier::Float64)
     sensorRange = maximum(xy[:,2]) - minimum(xy[:,2])
     vecLengthTemp = Int64(round(0.1*sensorRange));
     edgesOfHist = range(minimum(xy[:,2]), maximum(xy[:,2]), length = vecLengthTemp)
@@ -263,7 +223,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     meanOfPlateau = mean(xy[idxTemp,2])
     stdOfPlateau = std(xy[idxTemp,2])
     
-    noiseMultiplier = 5.0; # 15 # OBS HARD CODED AND SHOULD BE PULLED OUT!
+    #noiseMultiplier = 5.0; # 15 # OBS HARD CODED AND SHOULD BE PULLED OUT!
     thermalHoldStartIdx = findlast(x -> x > meanOfPlateau+noiseMultiplier*stdOfPlateau, xy[:,2])
     thermalHoldEndIdx = findlast(x -> x > meanOfPlateau-noiseMultiplier*stdOfPlateau, xy[:,2])
 
@@ -281,8 +241,8 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
             thermalHoldEndIdx = findlast(x -> x > meanOfPlateau-noiseMultiplier*stdOfPlateau, xy[:,2])
 
             try
-            thermalHoldStartIdx += sampleRate
-            thermalHoldEndIdx -= sampleRate
+                thermalHoldStartIdx += sampleRate
+                thermalHoldEndIdx -= sampleRate
             catch
                 return 0.0
                 println("Failure in the termal hold calculation")
@@ -301,16 +261,15 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     thermalCreepFun(x) = xy[thermalHoldStartIdx,1] .+ x[1].*(thermalHoldTime)#.^x[2]
     thermalHoldMinFun(x) = sqrt(sum((   (thermalCreepFun(x) .- thermalHoldDisplacement)./thermalHoldDisplacement ).^2))
 
-    result = optimize(thermalHoldMinFun, [deltaDisp], BFGS(),Optim.Options(time_limit = 3.0))
+    result = optimize(thermalHoldMinFun, [deltaDisp], BFGS(),Optim.Options(time_limit = 5.0))
     thermal_p = result.minimizer
 
-    
     # Estimate the thermal drift rate by taking the median of the differentiated h_thermal
     # dhtdt = d(h_thermal(time))/d(time)
     # The functional form accounts for any viscous effects lingering from the unloading at the start
     # of the thermal hold, while the median provides a roboust average of the thermal drift rate.
-    #dhtdt = median(thermal_p[1] .* thermal_p[2].*thermalHoldTime.^(thermal_p[2] - 1));
     dhtdt = thermal_p[1];
+    return dhtdt
 end
 
 
@@ -345,37 +304,35 @@ end
 
 
 function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control)
-    resultNames = subdirImport(indentationSet.targetDir,".ibw");     # Find the .ibw files in targetDir
+    resultNames = subdirImport(indentationSet.targetDir,".ibw")
     resultNames = resultNames[6:end]
-    ap = []
-    bp = []
+    collectCompliances = []
+    collectAreas = []
     for file in resultNames
         println(file)
-        tempS , tempA = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
-        push!(ap,tempS)
-        push!(bp,tempA)
-        #println([tempS tempA])
+        currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
+        push!(collectCompliances,currentCompliance)
+        push!(collectAreas,currentArea)
     end
 
-    squaredInverseArea = 1.0 ./sqrt.(bp)
-    #return squaredInverseArea
-    #return ones(size(ap))
-    return [squaredInverseArea[:] ap]
+    squaredInverseArea = 1.0 ./sqrt.(collectAreas)
+    effectiveCompliance = [squaredInverseArea[:] ones(size(collectCompliances))] \ collectCompliances
 
-
-
-    effectiveCompliance = [squaredInverseArea[:] ones(size(ap))] \ ap;
-    return effectiveCompliance
+    if ctrl.plotMode 
+        scatter(squaredInverseArea , collectCompliances, 
+                xlab = "1/A^2 [nm]^-2")
+    end
 
     return effectiveCompliance[2]
 end
 
 
 function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
-    
-    
-    xy = dataPreProcessing(indentationSet.targetDir*resultFile)
-    # Load raw displacements
+    xy = IBWtoTXT(indentationSet.targetDir*resultFile)
+    # Import signal
+
+    xy .*= 1e9     
+    # Convert to nano-meters
 
     #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
 

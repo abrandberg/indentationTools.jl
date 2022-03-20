@@ -1,17 +1,48 @@
 module indentationTools
 
-# Write your package code here.
-greet() = print("Hello world!")
+################################################################################
+## Structs used
+struct hyperParameters
+    sampleRate              ::Int64          # [Hz] Sample rate.
+    unloadingFitRange       ::Int64          # [-] Vector samples lengths (measured from start of unloading) to be included in unload fit.
+    unloadingFitFunction    ::String         # [string] Function to use when fitting.
+    compensateCreep         ::Bool           # [Bool] Compensate creep using Feng's method, y/n
+    constrainHead           ::Int            # Experimental, not implemented
+    constrainTail           ::Int            # Experimental, not implemented
+    machineCompliance       ::Float64        # Machine compliance
+    noiseMultiplier         ::Float64        # Number of standard deviations to add when thermal hold is missed.
+end
 
-include("preprocessingFunctions.jl ")
+struct control
+    plotMode                ::Bool           # Activates plotting of intermediate results
+    verboseMode             ::Bool           # Verbose output
+end
+
+struct metaInfoExperimentalSeries
+    designatedName          ::String         # Designated name
+    relativeHumidity        ::Float64        # Relative humidity
+    indenterType            ::String
+    indentationNormal       ::String
+    springConstant          ::Float64
+    areaFile                ::String
+    targetDir               ::String
+    thermalHoldTime         ::Int64          # Should be changed to something of unit "second".
+end
+
+################################################################################
+## Import and preprocess data functions
+include("preprocessingFunctions.jl")
 
 function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
-    xy = dataPreProcessing(indentationSet.targetDir*resultFile)
-    # Load raw displacements
+    xy = IBWtoTXT(indentationSet.targetDir*resultFile)
+    # Import signal
+
+    xy .*= 1e9     
+    # Convert to nano-meters
 
     #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
 
-    xy , basefit , zeroLine , rampStartIdx, xZero  = offsetAndDriftCompensation(xy)
+    xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
     # Find initial contact
     #ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
 
@@ -36,7 +67,6 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     #                          seriestype = :scatter, lab = "Start of hold", legend = :topleft))
 
     # Split into loading and unloading.
-    #xy_load = xy[1:holdStartIdx,:];
     xy_unld1 = xy[holdStartIdx:end,:];
 
     #Determine the end of the hold time.
@@ -139,7 +169,8 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         unloadArea < 0.0 && return 0.0
         
         # % Equation (1) in [1]
-        Er = sqrt(pi)/(2.0)/sqrt(unloadArea) / (1.0/stiffness )
+        Er = sqrt(pi)/(2.0)/sqrt(unloadArea) / ( 1.0/stiffness )
+
         if cmp(indentationSet.indenterType,"pyramid") == 0
             Er = Er/1.05;
         end
@@ -152,22 +183,24 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     end
 
     println(Er)
-    #return Er
 end
 
+################################################################################
+# Export functions
+    # Data import
+    export readIBW
+    export IBWtoTXT
+    export subdirImport
 
-#export all
+    # Preprocessing of signal
+    export offsetAndDriftCompensation
+    export findStartOfHold
+    export determineCreepDuringHold
 
-export readIBW
-export IBWtoTXT
-export offsetAndDriftCompensation
-export findStartOfHold
-export determineCreepDuringHold
-export modulusfitter
-
-export control
-export hyperParameters
-export metaInfoExperimentalSeries
-export subdirImport
-
+    # Principal functions/functionality
+    export modulusfitter
+    export control
+    export hyperParameters
+    export metaInfoExperimentalSeries
+    
 end
