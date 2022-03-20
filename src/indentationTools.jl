@@ -97,7 +97,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         xy_unld5 = xy_unld[1:Int64(round(2000*0.95)),:];  # OBS 2000 is hard coded!
         # Make sure that the thermal hold sequence is not included in the unloading curve.
 
-        dhtdt = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl)
+        dhtdt = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
         #dhtdt == 0.0 && return 0.0
    
         # Fitting of the unloading curve.
@@ -196,6 +196,7 @@ end
     export offsetAndDriftCompensation
     export findStartOfHold
     export determineCreepDuringHold
+    export determineThermalCreep
 
     # Principal functions/functionality
     export modulusfitter

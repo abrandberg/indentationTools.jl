@@ -215,7 +215,7 @@ end
 
 function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHoldTime::Int64,ctrl::control,noiseMultiplier::Float64)
     sensorRange = maximum(xy[:,2]) - minimum(xy[:,2])
-    vecLengthTemp = Int64(round(0.1*sensorRange));
+    vecLengthTemp = Int64(max(100,round(0.1*sensorRange)))
     edgesOfHist = range(minimum(xy[:,2]), maximum(xy[:,2]), length = vecLengthTemp)
     peakIdx = argmax(histcounts(xy[:,2] , edgesOfHist))
     
@@ -227,8 +227,8 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     thermalHoldStartIdx = findlast(x -> x > meanOfPlateau+noiseMultiplier*stdOfPlateau, xy[:,2])
     thermalHoldEndIdx = findlast(x -> x > meanOfPlateau-noiseMultiplier*stdOfPlateau, xy[:,2])
 
-    thermalHoldStartIdx += sampleRate
-    thermalHoldEndIdx -= sampleRate
+    thermalHoldStartIdx += Int64(round(sampleRate*0.5))
+    thermalHoldEndIdx -= Int64(round(sampleRate*0.5))
     
     # Ensure that the thermal hold sequence contains at least 25 seconds (out of the 30 secounds
     # specified).
@@ -244,8 +244,8 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
                 thermalHoldStartIdx += sampleRate
                 thermalHoldEndIdx -= sampleRate
             catch
-                return 0.0
                 println("Failure in the termal hold calculation")
+                return 0.0
             end
         end
         ctrl.verboseMode && println("Thermal hold found using multiplier $noiseMultiplier")
