@@ -153,6 +153,10 @@ function IBWtoTXT(filename::String)
     return [x y]
 end
 
+
+"""
+dataPreProcessing(filename::String) is a vestigal function from the porting from MATLAB. It reads the IBW files and converts to SI units.
+"""
 function dataPreProcessing(filename::String)
     xy0 = IBWtoTXT(filename)
     # Import signal
@@ -207,7 +211,10 @@ function offsetAndDriftCompensation(xy::Matrix{Float32})
 end
 
 
-
+"""
+subdirImport(placeToLook::String,stringToMatch::String) imports the file names matching some criterion in a 
+target directory. 
+"""
 function subdirImport(placeToLook::String,stringToMatch::String)
     return filter(x-> contains(x, stringToMatch) , readdir(placeToLook))
 end

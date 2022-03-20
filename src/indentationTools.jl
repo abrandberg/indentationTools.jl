@@ -168,5 +168,6 @@ export modulusfitter
 export control
 export hyperParameters
 export metaInfoExperimentalSeries
+export subdirImport
 
 end
