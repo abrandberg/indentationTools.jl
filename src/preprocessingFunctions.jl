@@ -5,6 +5,7 @@ using Optim
 using DelimitedFiles
 using DataFrames
 using CSV
+using Distributions
 
 
 """
@@ -427,9 +428,6 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
 end
 
 function importNI_forceDisplacementData(filename::String)   
-#    using CSV
-#    using DataFrames
-#    filename = "C:\\Users\\augus\\OneDrive\\BotheringAugust\\Nanoindentation_Interfaces_MH\\NI_raw_data\\Pet-g_interface-Abstand_3mu#1.TXT"
     df = CSV.File(filename, decimal = ',', skipto = 72, delim = "\t", header = ["Time", "Pd_mm", "Fn_mN","FnRef_mN","SegmentID"]) |> DataFrame
     dx = Matrix(df)
 

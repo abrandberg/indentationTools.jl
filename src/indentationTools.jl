@@ -56,7 +56,9 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         # Convert displacement-deflection matrix to indentation-force matrix
 
     elseif cmp(indentationSet.indentationDataType, "ni") == 0
-        
+        xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
+        xy = Float32.(xy)
+        rampStartIdx = 1
     end
 
     
@@ -104,11 +106,15 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     sleep(1.0)
     
     if condition1 #&& condition2 && condition3
-        xy_unld5 = xy_unld[1:Int64(round(2000*0.95)),:];  # OBS 2000 is hard coded!
+        xy_unld5 = xy_unld[1:Int64(round(hyperParameters.sampleRate*0.95)),:]
         # Make sure that the thermal hold sequence is not included in the unloading curve.
 
-        dhtdt = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
-        #dhtdt == 0.0 && return 0.0
+        if cmp(indentationSet.indentationDataType, "afm") == 0
+            dhtdt = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
+        else
+            dhtdt = 0.0
+        end
+
    
         # Fitting of the unloading curve.
         stiffness_fit = Array{Float64}(undef,1)    
@@ -143,8 +149,13 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             
         end
 
-        h_dot_tot = determineCreepDuringHold(xy_hold,hyperParameters.sampleRate)       
-        dPdt = [1/hyperParameters.sampleRate .* collect(0:(length(xy_unld5[:,1])-1)) ones(length(xy_unld5[:,1]))] \ xy_unld5[:,2]
+        if cmp(indentationSet.indentationDataType, "afm") == 0
+            h_dot_tot = determineCreepDuringHold(xy_hold,hyperParameters.sampleRate)       
+            dPdt = [1/hyperParameters.sampleRate .* collect(0:(length(xy_unld5[:,1])-1)) ones(length(xy_unld5[:,1]))] \ xy_unld5[:,2]
+        else
+            h_dot_tot = 0.0
+            dPdt = 0.0
+        end
         
         if hyperParameters.compensateCreep
             stiffness = inv(1/stiffness_fit + h_dot_tot/(abs(dPdt[1]))); 
@@ -221,6 +232,7 @@ end
     # Data import
     export readIBW
     export IBWtoTXT
+    export importNI_forceDisplacementData
     export subdirImport
 
     # Preprocessing of signal

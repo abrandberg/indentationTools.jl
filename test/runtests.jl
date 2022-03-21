@@ -2,9 +2,12 @@ using indentationTools
 using Test
 
 
-#include("preprocessingFunctions.jl")
 include("testFunctions.jl")
 
+#importNI_forceDisplacementData("test/testData/anonNI.TXT")
+@testset "importNI_forceDisplacementData " begin
+     1000 == length(importNI_forceDisplacementData("test/testData/anonNI.TXT"))
+end
 
 @testset "Test readIBW                   " begin
     # TO DO:
@@ -266,6 +269,12 @@ end
 end
 
 
+
+
+
+
+
+
 @testset "modulusfitter                  " begin
     ctrl = control(false, false)
     indentSet = metaInfoExperimentalSeries("Test2", 
@@ -294,5 +303,20 @@ end
     @test begin
         hp =  hyperParameters( 2000, 1400, "Feng", true, 0, 0, 0.0, 5.0)
         isapprox( 1.92197, modulusfitter( indentSet, hp, ctrl, "anonMG.ibw"), rtol = 0.05)
+    end
+    
+    indentSet = metaInfoExperimentalSeries("Test2", 
+                                            50.0,
+                                        "hemisphere",
+                                        "X",
+                                        217.51, 
+                                        "vickers",
+                                        "test/testData/",
+                                        50000, 
+                                        "ni")
+     @test begin
+        hp =  hyperParameters( 10, 10, "Oliver-Pharr", false, 0, 0, 0.0, 5.0)
+        
+        isapprox( 1.92197, modulusfitter( indentSet, hp, ctrl, "anonNI.TXT"), rtol = 5.05)
     end
 end
