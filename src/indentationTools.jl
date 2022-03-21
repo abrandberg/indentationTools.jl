@@ -152,20 +152,41 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         end
         x0 < 0.0 && return 0.0
 
-        area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
-        # % Determine the area by loading the calibration data and fitting a polynom to the data.        
 
-        if (x0 > 100.0)
-            area_fit_end = length(area_xy[:,1])
-        elseif (x0 < 100.0)
-            area_fit_end = findfirst( x -> x > 100,area_xy[:,1])
+        if cmp(indentationSet.areaFile, "vickers") == 0
+            area_xy(indentationDepth) = 24.5.*indentationDepth.^2
+            # N.A. Sakharova, J.V. Fernandes, J.M. Antunes, M.C. Oliveira,
+            # Comparison between Berkovich, Vickers and conical indentation tests: A three-dimensional numerical simulation study,
+            # International Journal of Solids and Structures,
+            # Volume 46, Issue 5, 2009, Pages 1095-1104,
+            # https://doi.org/10.1016/j.ijsolstr.2008.10.032
+
+            unloadArea = area_xy(x0)
+        elseif cmp(indentationSet.areaFile, "berkovich") == 0
+            area_xy(indentationDepth) = 24.5.*indentationDepth.^2
+            # N.A. Sakharova, J.V. Fernandes, J.M. Antunes, M.C. Oliveira,
+            # Comparison between Berkovich, Vickers and conical indentation tests: A three-dimensional numerical simulation study,
+            # International Journal of Solids and Structures,
+            # Volume 46, Issue 5, 2009, Pages 1095-1104,
+            # https://doi.org/10.1016/j.ijsolstr.2008.10.032
+
+            unloadArea = area_xy(x0)
+        else
+            area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
+            # % Determine the area by loading the calibration data and fitting a polynom to the data.        
+
+            if (x0 > 100.0)
+                area_fit_end = length(area_xy[:,1])
+            elseif (x0 < 100.0)
+                area_fit_end = findfirst( x -> x > 100,area_xy[:,1])
+            end
+            
+            tempVec = area_xy[1:area_fit_end,1]
+            p_area = [tempVec.^2 tempVec tempVec.^0.5 tempVec.^0.25 tempVec.^0.125] \ area_xy[1:area_fit_end,2]
+            
+            unloadArea = [x0^2 x0 x0^0.5 x0^0.25 x0^0.125] * p_area
+            unloadArea = unloadArea[1]
         end
-        
-        tempVec = area_xy[1:area_fit_end,1]
-        p_area = [tempVec.^2 tempVec tempVec.^0.5 tempVec.^0.25 tempVec.^0.125] \ area_xy[1:area_fit_end,2]
-        
-        unloadArea = [x0^2 x0 x0^0.5 x0^0.25 x0^0.125] * p_area
-        unloadArea = unloadArea[1]
         unloadArea < 0.0 && return 0.0
         
         # % Equation (1) in [1]
