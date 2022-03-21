@@ -3,6 +3,8 @@ using Statistics
 using NaNStatistics
 using Optim
 using DelimitedFiles
+using DataFrames
+using CSV
 
 
 """
@@ -423,3 +425,14 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     return 1/stiffness_fit , unloadArea
     # Assign outputs
 end
+
+function importNI_forceDisplacementData(filename::String)   
+#    using CSV
+#    using DataFrames
+#    filename = "C:\\Users\\augus\\OneDrive\\BotheringAugust\\Nanoindentation_Interfaces_MH\\NI_raw_data\\Pet-g_interface-Abstand_3mu#1.TXT"
+    df = CSV.File(filename, decimal = ',', skipto = 72, delim = "\t", header = ["Time", "Pd_mm", "Fn_mN","FnRef_mN","SegmentID"]) |> DataFrame
+    dx = Matrix(df)
+
+    return dx[:,2:3]
+end
+

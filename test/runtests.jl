@@ -275,7 +275,8 @@ end
                                         217.51, 
                                         "test/testData/sampleAreaFunction.txt",
                                         "test/testData/",
-                                        50000)
+                                        50000, 
+                                        "afm")
 
     # Regression tests
     @test begin

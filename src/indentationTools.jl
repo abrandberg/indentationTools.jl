@@ -27,6 +27,7 @@ struct metaInfoExperimentalSeries
     areaFile                ::String
     targetDir               ::String
     thermalHoldTime         ::Int64          # Should be changed to something of unit "second".
+    indentationDataType     ::String         # "afm" for classical CC or "ni" for force-displacement
 end
 
 ################################################################################
@@ -34,22 +35,31 @@ end
 include("preprocessingFunctions.jl")
 
 function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
-    xy = IBWtoTXT(indentationSet.targetDir*resultFile)
-    # Import signal
 
-    xy .*= 1e9     
-    # Convert to nano-meters
 
-    #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+    if cmp(indentationSet.indentationDataType, "afm") == 0
+        xy = IBWtoTXT(indentationSet.targetDir*resultFile)
+        # Import signal
 
-    xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
-    # Find initial contact
-    #ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+        xy .*= 1e9     
+        # Convert to nano-meters
 
-    xy[:,1] .-= xy[:,2]
-    xy[:,2] .*= indentationSet.springConstant
-    xy[:,1] .-= hyperParameters.machineCompliance.*xy[:,2];
-    # Convert displacement-deflection matrix to indentation-force matrix
+        #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+
+        xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
+        # Find initial contact
+        #ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+
+        xy[:,1] .-= xy[:,2]
+        xy[:,2] .*= indentationSet.springConstant
+        xy[:,1] .-= hyperParameters.machineCompliance.*xy[:,2];
+        # Convert displacement-deflection matrix to indentation-force matrix
+
+    elseif cmp(indentationSet.indentationDataType, "ni") == 0
+        
+    end
+
+    
         
     #################################################################
     # Determine the start of the hold time at circa max force.
@@ -162,15 +172,15 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # https://doi.org/10.1016/j.ijsolstr.2008.10.032
 
             unloadArea = area_xy(x0)
-        elseif cmp(indentationSet.areaFile, "berkovich") == 0
-            area_xy(indentationDepth) = 24.5.*indentationDepth.^2
-            # N.A. Sakharova, J.V. Fernandes, J.M. Antunes, M.C. Oliveira,
-            # Comparison between Berkovich, Vickers and conical indentation tests: A three-dimensional numerical simulation study,
-            # International Journal of Solids and Structures,
-            # Volume 46, Issue 5, 2009, Pages 1095-1104,
-            # https://doi.org/10.1016/j.ijsolstr.2008.10.032
+        # elseif cmp(indentationSet.areaFile, "berkovich") == 0
+        #     area_xy(indentationDepth) = 24.5.*indentationDepth.^2
+        #     # N.A. Sakharova, J.V. Fernandes, J.M. Antunes, M.C. Oliveira,
+        #     # Comparison between Berkovich, Vickers and conical indentation tests: A three-dimensional numerical simulation study,
+        #     # International Journal of Solids and Structures,
+        #     # Volume 46, Issue 5, 2009, Pages 1095-1104,
+        #     # https://doi.org/10.1016/j.ijsolstr.2008.10.032
 
-            unloadArea = area_xy(x0)
+        #     unloadArea = area_xy(x0)
         else
             area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
             # % Determine the area by loading the calibration data and fitting a polynom to the data.        
