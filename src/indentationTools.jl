@@ -58,6 +58,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     elseif cmp(indentationSet.indentationDataType, "ni") == 0
         xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
         xy = Float32.(xy)
+        xy[:,2] *= 1.0e6
         rampStartIdx = 1
     end
 

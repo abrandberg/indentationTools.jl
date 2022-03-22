@@ -6,7 +6,7 @@ using DelimitedFiles
 using DataFrames
 using CSV
 using Distributions
-
+using Plots
 
 """
 ReadIBW(filename) 
