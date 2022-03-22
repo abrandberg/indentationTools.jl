@@ -217,12 +217,12 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         if cmp(indentationSet.indenterType,"pyramid") == 0
             Er = Er/1.05;
         end
-        return Er
+        return Er , maxIndentation , x0 ,  unloadArea , stiffness  
     else
         println(condition1)
         println(condition2)
         println(condition3)
-        return 0.0
+        return 0.0 , 0.0 , 0.0 , 0.0 , 0.0
     end
 
     println(Er)
