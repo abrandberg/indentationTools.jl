@@ -158,6 +158,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             uld_p = resultFit.minimizer
             stiffness_fit = Fmax.*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1)
 
+            println([Fmax , Dmax , uld_p[3] ])
 
 
         elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
@@ -192,7 +193,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         elseif cmp(indentationSet.indenterType,"hemisphere") == 0
             x0 = maxIndentation - 0.75*Fmax/stiffness;
         end
-        x0 < 0.0 && return 0.0
+        x0 < 0.0 && return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0
 
 
         if cmp(indentationSet.areaFile, "vickers") == 0
@@ -229,7 +230,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             unloadArea = [x0^2 x0 x0^0.5 x0^0.25 x0^0.125] * p_area
             unloadArea = unloadArea[1]
         end
-        unloadArea < 0.0 && return 0.0
+        unloadArea < 0.0 && return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0
         
         # % Equation (1) in [1]
         Er = sqrt(pi)/(2.0)/sqrt(unloadArea) / ( 1.0/stiffness )
