@@ -124,8 +124,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         Fmax = xy_unld5[1,2]               # Maximum force during unloading
 
         if cmp(hyperParameters.unloadingFitFunction,"Oliver-Pharr") == 0
-            Dmax = xy_unld5[1,1]         
-            Dmax = xy[holdStartIdx,1]      
+            Dmax = xy_unld5[1,1]               
             # Maximum indentation depth during unloading
             
             function unloadFitFun(fitCoefs)
@@ -218,12 +217,12 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         if cmp(indentationSet.indenterType,"pyramid") == 0
             Er = Er/1.05;
         end
-        return Er , maxIndentation , x0 ,  unloadArea , stiffness  
+        return Er , maxIndentation , x0 ,  unloadArea , stiffness  , uld_p[3]
     else
         println(condition1)
         println(condition2)
         println(condition3)
-        return 0.0 , 0.0 , 0.0 , 0.0 , 0.0
+        return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0
     end
 
     println(Er)

@@ -290,22 +290,22 @@ end
     # Regression tests
     @test begin
         hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 5.0)
-        Er , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         isapprox(1.8696, Er ,rtol = 0.05)
     end
     @test begin
         hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", true, 0, 0, 0.0, 5.0)
-        Er , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         isapprox(1.9, Er,rtol = 0.05)
     end
     @test begin
         hp =  hyperParameters( 2000, 1400, "Feng", false, 0, 0, 0.0, 5.0)
-        Er , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         isapprox( 1.9289, Er,rtol = 0.05)
     end
     @test begin
         hp =  hyperParameters( 2000, 1400, "Feng", true, 0, 0, 0.0, 5.0)
-        Er , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         isapprox( 1.92197, Er, rtol = 0.05)
     end
     
@@ -320,7 +320,7 @@ end
                                         "ni")
      @test begin
         hp =  hyperParameters( 10, 10, "Oliver-Pharr", false, 0, 0, 0.0, 5.0)
-        Er , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         isapprox( 1.92197, Er, rtol = 5.05)
     end
 end
