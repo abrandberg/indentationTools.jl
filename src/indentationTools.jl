@@ -146,10 +146,10 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Maximum indentation depth during unloading
             
             function unloadFitFunAP(fitCoefs)
-                return fitCoefs[1].*0.0 .+ Fmax.*(dispVals .- fitCoefs[2]).^fitCoefs[3] .- forceVals
+                return fitCoefs[1].*0.0 .+ Fmax.*1.0e-6.*(dispVals .- fitCoefs[2]).^fitCoefs[3] .- forceVals.*1.0e-6
             end
             function unloadFitMinFunAP(fitCoefs)
-                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
+                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals.*1.0e-6).^2 ) )
             end
 
             #lx = [0.0, 0.0 , 0.0]; ux = [Inf, minimum(dispVals)-1e-2 , Inf];
@@ -157,7 +157,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             dfc = TwiceDifferentiableConstraints(lx, ux)
             resultFit = optimize(unloadFitMinFunAP, dfc, [1.0, 1.0, 1.0], IPNewton())
             uld_p = resultFit.minimizer
-            stiffness_fit = Fmax.*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1.0)
+            stiffness_fit = Fmax.*1.0e-6.*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1.0)
 
             println([Fmax , Dmax , uld_p[2] , uld_p[3] ])
 
