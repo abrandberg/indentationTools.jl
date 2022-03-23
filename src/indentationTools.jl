@@ -146,7 +146,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Maximum indentation depth during unloading
             
             function unloadFitFunAP(fitCoefs)
-                return fitCoefs[1].*0.0 + Fmax.*(dispVals .- fitCoefs[2]).^fitCoefs[3] .- forceVals
+                return fitCoefs[1].*0.0 .+ Fmax.*(dispVals .- fitCoefs[2]).^fitCoefs[3] .- forceVals
             end
             function unloadFitMinFunAP(fitCoefs)
                 sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
