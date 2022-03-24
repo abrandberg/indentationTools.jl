@@ -114,7 +114,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     #ctrl.plotMode && display(title!(string(condition3)))
     #sleep(1.0)
     
-    if condition1 && (length(xy_unld[:,1]) > 285) #&& condition2 && condition3
+    if condition1 #&& (length(xy_unld[:,1]) > 285) #&& condition2 && condition3
 
         ctrl.plotMode && display(plot(xy_unld[:,1], xy_unld[:,2]))
         ctrl.verboseMode && println(length(xy_unld[:,1]))
