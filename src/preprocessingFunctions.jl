@@ -192,7 +192,7 @@ function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     # 5. Find the first time the vector exceeds this value.
     # 6. This is taken as the first value in the hold sequence.
 
-    sensorRange = maximum(xy[:,2]) - minimum(xy[:,2])
+    sensorRange = ( maximum(xy[:,2]) - minimum(xy[:,2]) ) .*10e3./maximum(xy[:,2])
     vecLengthTemp = Int64(round(4.0*sensorRange))
     edgesOfHist = range(minimum(xy[:,2]), maximum(xy[:,2]), length = vecLengthTemp)
     histTemp = histcounts(xy[:,2] , edgesOfHist)
@@ -205,11 +205,12 @@ function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     idxTemp = map(x -> x > edgesOfHist[peakIdx], xy[:,2])
     
     meanOfPlateau = mean(xy[idxTemp,2])
+    stdOfPlateau = std(xy[idxTemp,2])
 
     if cmp(directionOfSearch,"first") == 0
-        returnIdx = findfirst(x -> x ≥ meanOfPlateau, xy[:,2])
+        returnIdx = findfirst(x -> x ≥ meanOfPlateau-stdOfPlateau, xy[:,2])
     elseif cmp(directionOfSearch,"last") == 0
-        returnIdx = findlast(x -> x ≥ meanOfPlateau, xy[:,2])
+        returnIdx = findlast(x -> x ≥ meanOfPlateau-stdOfPlateau, xy[:,2])
     end
 
     return returnIdx
@@ -272,7 +273,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     # The functional form accounts for any viscous effects lingering from the unloading at the start
     # of the thermal hold, while the median provides a roboust average of the thermal drift rate.
     dhtdt = thermal_p[1];
-    return dhtdt
+    return dhtdt , thermalHoldStartIdx
 end
 
 

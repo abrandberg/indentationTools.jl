@@ -6,7 +6,9 @@ include("testFunctions.jl")
 
 #importNI_forceDisplacementData("test/testData/anonNI.TXT")
 @testset "importNI_forceDisplacementData " begin
-     1000 == length(importNI_forceDisplacementData("test/testData/anonNI.TXT"))
+    @test begin
+        2000 == length(importNI_forceDisplacementData("test/testData/anonNI.TXT"))
+    end
 end
 
 @testset "Test readIBW                   " begin
@@ -200,37 +202,45 @@ end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(44.0,4.0,1.1)
-        isapprox(-4.0 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),rtol = 0.10)
+
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-4.0 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , creepVal , rtol = 0.10)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,4.0,1.1)
-        isapprox(-4.0 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),rtol = 0.10)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-4.0 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , creepVal,rtol = 0.10)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,0.20,1.1)
-        isapprox(-0.2 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),rtol = 0.10)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-0.2 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , creepVal,rtol = 0.10)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,4.00,0.8)
-        isapprox(-4.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),rtol = 0.15)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-4.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , creepVal,rtol = 0.15)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(0.0,4.00,0.8)
-        isapprox(-4.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),rtol = 0.15)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-4.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , creepVal,rtol = 0.15)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,0.00,0.8)
-        isapprox(-0.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),atol = 0.05)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-0.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , creepVal,atol = 0.05)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,4.00,0.0)
-        isapprox(-4.0 * 0.0*holdTimeVals[end]^(0.0 - 1.0) , determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0),atol = 0.25)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        isapprox(-4.0 * 0.0*holdTimeVals[end]^(0.0 - 1.0) , creepVal, atol = 0.25)
     end
 end
 
@@ -276,7 +286,7 @@ end
 
 
 @testset "modulusfitter                  " begin
-    ctrl = control(false, false)
+    ctrl = control(true, false)
     indentSet = metaInfoExperimentalSeries("Test2", 
                                             50.0,
                                         "hemisphere",
@@ -289,24 +299,28 @@ end
 
     # Regression tests
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 5.0)
+        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 2.0)
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
+        println("Er is $Er GPa")
         isapprox(1.8696, Er ,rtol = 0.05)
     end
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", true, 0, 0, 0.0, 5.0)
+        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", true, 0, 0, 0.0, 2.0)
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
-        isapprox(1.9, Er,rtol = 0.05)
+        println("Er is $Er GPa")
+        isapprox(1.6, Er,rtol = 0.05)
     end
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Feng", false, 0, 0, 0.0, 5.0)
+        hp =  hyperParameters( 2000, 1400, "Feng", false, 0, 0, 0.0, 2.0)
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
+        println("Er is $Er GPa")
         isapprox( 1.9289, Er,rtol = 0.05)
     end
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Feng", true, 0, 0, 0.0, 5.0)
+        hp = hyperParameters( 2000, 1400, "Feng", true, 0, 0, 0.0, 2.0)
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
-        isapprox( 1.92197, Er, rtol = 0.05)
+        println("Er is $Er GPa")
+        isapprox( 1.622, Er, rtol = 0.05)
     end
     
     indentSet = metaInfoExperimentalSeries("Test2", 
@@ -316,11 +330,31 @@ end
                                         217.51, 
                                         "vickers",
                                         "test/testData/",
-                                        50000, 
+                                        0, 
                                         "ni")
      @test begin
-        hp =  hyperParameters( 10, 10, "Oliver-Pharr", false, 0, 0, 0.0, 5.0)
+        hp =  hyperParameters( 10, 200, "Oliver-Pharr", false, 0, 0, 0.0, 2.0)
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
-        isapprox( 1.92197, Er, rtol = 5.05)
+        println("Er is $Er GPa")
+        isapprox( 2.871314842239161, Er, rtol = 1.15)
+     end
+     @test begin
+        hp =  hyperParameters( 10, 200, "AP-OP", false, 0, 0, 0.0, 2.0)
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
+        println("Er is $Er GPa")
+        isapprox( 2.9104987116718184, Er, rtol = 1.15)
+     end
+     @test begin
+        hp =  hyperParameters( 10, 200, "Feng", false, 0, 0, 0.0, 2.0)
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
+        println("Er is $Er GPa")
+        isapprox( 2.8041684985519852, Er, rtol = 1.15)
+    end
+    @test begin
+        hp =  hyperParameters( 10, 200, "Feng", true, 0, 0, 0.0, 2.0)
+        Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
+        println("Er is $Er GPa")
+        isapprox( 2.5278698699501563 , Er, rtol = 1.15)
+
     end
 end

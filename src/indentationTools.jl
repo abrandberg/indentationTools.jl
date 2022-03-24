@@ -44,11 +44,11 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         xy .*= 1e9     
         # Convert to nano-meters
 
-        #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+        ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
 
         xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
         # Find initial contact
-        #ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+        ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
 
         xy[:,1] .-= xy[:,2]
         xy[:,2] .*= indentationSet.springConstant
@@ -57,9 +57,16 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
     elseif cmp(indentationSet.indentationDataType, "ni") == 0
         xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
+        # Import data
         xy = Float32.(xy)
+        # Convert to Float32
         xy[:,2] *= 1.0e6
+        # Convert force to nano-Newtons
+        
         rampStartIdx = 1
+        # Software handles rampStart, so set to 1.
+
+        ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
     end
 
     
@@ -76,15 +83,15 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     # 6. This is taken as the first value in the hold sequence.
     holdStartIdx = findStartOfHold(xy,"first")
     ctrl.plotMode && display(plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", legend = false))
-    # ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
-    #                          seriestype = :scatter, lab = "Start of hold", legend = :topleft))
+    ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
+                             seriestype = :scatter, lab = "Start of hold", legend = :topleft))
 
     # Split into loading and unloading.
     xy_unld1 = xy[holdStartIdx:end,:];
 
     #Determine the end of the hold time.
     unloadStartIdx = findStartOfHold(xy_unld1,"last")
-    #ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter))
+    ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter))
 
     # Split into two new pieces
     xy_hold = xy_unld1[1:unloadStartIdx-1,:];
@@ -96,6 +103,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     # and furthermore it messes up the mathematical framework if you accept such indentations (see
     # Cheng & Cheng articles.)
     condition1 = xy[holdStartIdx,1] < xy_unld1[unloadStartIdx,1] 
+    ctrl.verboseMode && println("condition1 = $condition1")
     
     # Accept only monotonously increasing load-displacement curves. A curve may show weird behaviour
     # and our solution is to simply drop the curve in that case. 
@@ -103,23 +111,30 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     condition3 = maximum(xy_unld[:,1]) < (xy_unld[1,1]+0.5)
 
 
-    ctrl.plotMode && display(title!(string(condition3)))
-    sleep(1.0)
+    #ctrl.plotMode && display(title!(string(condition3)))
+    #sleep(1.0)
     
-    if condition1 #&& condition2 && condition3
-        xy_unld5 = xy_unld[1:Int64(round(hyperParameters.sampleRate*0.95)),:]
+    if condition1 && (length(xy_unld[:,1]) > 285) #&& condition2 && condition3
+
+        ctrl.plotMode && display(plot(xy_unld[:,1], xy_unld[:,2]))
+        ctrl.verboseMode && println(length(xy_unld[:,1]))
         # Make sure that the thermal hold sequence is not included in the unloading curve.
 
         if cmp(indentationSet.indentationDataType, "afm") == 0
-            dhtdt = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
+            dhtdt , thermalHoldStartIdx = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
+            thermalHoldStartIdx -= hyperParameters.sampleRate
         else
             dhtdt = 0.0
+            thermalHoldStartIdx = length(xy_unld[:,1])
         end
+        #println(thermalHoldStartIdx)
+        xy_unld5 = xy_unld[1:thermalHoldStartIdx,:]
+        ctrl.plotMode && display(plot!(xy_unld5[:,1], xy_unld5[:,2]))
 
-   
         # Fitting of the unloading curve.
         stiffness_fit = Array{Float64}(undef,1)    
         dispVals = xy_unld5[1:hyperParameters.unloadingFitRange,1]
+        ctrl.verboseMode && println(length(dispVals))
         forceVals = xy_unld5[1:hyperParameters.unloadingFitRange,2]
         Fmax = xy_unld5[1,2]               # Maximum force during unloading
 
@@ -146,20 +161,20 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Maximum indentation depth during unloading
             
             function unloadFitFunAP(fitCoefs)
-                return fitCoefs[1].*0.0 .+ Fmax.*1.0e-6.*(dispVals .- fitCoefs[2]).^fitCoefs[3] .- forceVals.*1.0e-6
+                return Fmax.*((dispVals .- fitCoefs[1])./(Dmax .- fitCoefs[1]) ).^( fitCoefs[2] ) .- forceVals
             end
             function unloadFitMinFunAP(fitCoefs)
-                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals.*1.0e-6).^2 ) )
+                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
             end
 
-            #lx = [0.0, 0.0 , 0.0]; ux = [Inf, minimum(dispVals)-1e-2 , Inf];
-            lx = [-Inf, -Inf , -Inf]; ux = [Inf, Inf , Inf];
-            dfc = TwiceDifferentiableConstraints(lx, ux)
-            resultFit = optimize(unloadFitMinFunAP, dfc, [1.0, 1.0, 1.0], IPNewton())
-            uld_p = resultFit.minimizer
-            stiffness_fit = Fmax.*1.0e-6.*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1.0)
+            ctrl.plotMode && display(plot(dispVals, forceVals))
 
-            println([Fmax , Dmax , uld_p[2] , uld_p[3] ])
+            resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
+            uld_p = Optim.minimizer(resultFit)
+            #println(Optim.converged(resultFit) )
+            stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
+            #println(stiffness_fit)
+            #println([Fmax , Dmax , uld_p[1] , uld_p[2] ])
 
 
         elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
@@ -170,15 +185,14 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             uld_p = resultFit.minimizer
             stiffness_fit = inv(( 0.5*uld_p[2].*Fmax.^-0.5 + uld_p[4]*uld_p[3].*Fmax.^(uld_p[4] - 1.0) ))
             
+        else
+            println("Not implemented.")
+            stop
         end
 
-        if cmp(indentationSet.indentationDataType, "afm") == 0
-            h_dot_tot = determineCreepDuringHold(xy_hold,hyperParameters.sampleRate)       
-            dPdt = [1/hyperParameters.sampleRate .* collect(0:(length(xy_unld5[:,1])-1)) ones(length(xy_unld5[:,1]))] \ xy_unld5[:,2]
-        else
-            h_dot_tot = 0.0
-            dPdt = 0.0
-        end
+        h_dot_tot = determineCreepDuringHold(xy_hold,hyperParameters.sampleRate)       
+        dPdt = [1/hyperParameters.sampleRate .* collect(0:(length(xy_unld5[:,1])-1)) ones(length(xy_unld5[:,1]))] \ xy_unld5[:,2]
+
         
         if hyperParameters.compensateCreep
             stiffness = inv(1/stiffness_fit + h_dot_tot/(abs(dPdt[1]))); 
@@ -197,24 +211,19 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         x0 < 0.0 && return 0.0 , maxIndentation , x0 , 0.0 , stiffness , uld_p[3]
 
 
-        if cmp(indentationSet.areaFile, "vickers") == 0
+        if cmp(indentationSet.areaFile, "vickers") == 0 || cmp(indentationSet.areaFile, "berkovich") == 0
             area_xy(indentationDepth) = 24.5.*indentationDepth.^2
+            # Define function
+            unloadArea = area_xy(x0)
+            # Extract value
+
             # N.A. Sakharova, J.V. Fernandes, J.M. Antunes, M.C. Oliveira,
-            # Comparison between Berkovich, Vickers and conical indentation tests: A three-dimensional numerical simulation study,
+            # Comparison between Berkovich, Vickers and conical indentation tests: 
+            # A three-dimensional numerical simulation study,
             # International Journal of Solids and Structures,
             # Volume 46, Issue 5, 2009, Pages 1095-1104,
             # https://doi.org/10.1016/j.ijsolstr.2008.10.032
 
-            unloadArea = area_xy(x0)
-        # elseif cmp(indentationSet.areaFile, "berkovich") == 0
-        #     area_xy(indentationDepth) = 24.5.*indentationDepth.^2
-        #     # N.A. Sakharova, J.V. Fernandes, J.M. Antunes, M.C. Oliveira,
-        #     # Comparison between Berkovich, Vickers and conical indentation tests: A three-dimensional numerical simulation study,
-        #     # International Journal of Solids and Structures,
-        #     # Volume 46, Issue 5, 2009, Pages 1095-1104,
-        #     # https://doi.org/10.1016/j.ijsolstr.2008.10.032
-
-        #     unloadArea = area_xy(x0)
         else
             area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
             # % Determine the area by loading the calibration data and fitting a polynom to the data.        
@@ -239,11 +248,11 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         if cmp(indentationSet.indenterType,"pyramid") == 0
             Er = Er/1.05;
         end
-        return Er , maxIndentation , x0 ,  unloadArea , stiffness  , uld_p[3]
+        return Er , maxIndentation , x0 ,  unloadArea , stiffness  , uld_p[2]
     else
-        println(condition1)
-        println(condition2)
-        println(condition3)
+        #println(condition1)
+        #println(condition2)
+        #println(condition3)
         return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0
     end
 
