@@ -314,18 +314,31 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
     collectAreas = []
     for file in resultNames
         println(file)
-        currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
-        push!(collectCompliances,currentCompliance)
-        push!(collectAreas,currentArea)
+
+        try
+            currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
+            push!(collectCompliances,currentCompliance)
+            push!(collectAreas,currentArea)
+        catch
+            currentCompliance = NaN
+            currentArea = NaN
+        end
+        
     end
 
+    collectAreas = Float32.(collectAreas)
+    collectCompliances = Float32.(collectCompliances)
+    #println(collectAreas)
+    #println(collectCompliances)
     squaredInverseArea = 1.0 ./sqrt.(collectAreas)
-    effectiveCompliance = [squaredInverseArea[:] ones(size(collectCompliances))] \ collectCompliances
+    effectiveCompliance = [squaredInverseArea[:] ones(length(squaredInverseArea))] \ collectCompliances
 
-    if ctrl.plotMode 
-        scatter(squaredInverseArea , collectCompliances, 
-                xlab = "1/A^2 [nm]^-2")
-    end
+    println(effectiveCompliance)
+    #if ctrl.plotMode 
+        #display(scatter!(squaredInverseArea , collectCompliances, 
+        #        xlab = "1/A^2 [nm]^-2", ylab = "Compliance [m/N]", lab="$(indentationSet.designatedName)"))
+        #display(plot!([ minimum(squaredInverseArea),  maximum(squaredInverseArea) ],[ effectiveCompliance[1].*[ minimum(squaredInverseArea),  maximum(squaredInverseArea) ] .+ effectiveCompliance[2]    ] ))        
+    #end
 
     return effectiveCompliance[2]
 end
@@ -338,29 +351,33 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     xy .*= 1e9     
     # Convert to nano-meters
 
-    #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+    ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
 
     xy , basefit , zeroLine , rampStartIdx, xZero  = offsetAndDriftCompensation(xy)
     # Find initial contact
-    #ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+    ctrl.plotMode && display(plot!(xy[:,1],xy[:,2]))
 
     xy[:,1] .-= xy[:,2]
     xy[:,2] .*= indentationSet.springConstant
     # Convert displacement-deflection matrix to indentation-force matrix
 
     holdStartIdx = findStartOfHold(xy,"first")
-
+    ctrl.plotMode && display(plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", legend = false))
+    ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
+                             seriestype = :scatter, lab = "Start of hold", legend = :topleft))
     # Split into loading and unloading.
     xy_unld1 = xy[holdStartIdx:end,:];
 
     #Determine the end of the hold time.
     unloadStartIdx = findStartOfHold(xy_unld1,"last")
+    ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter))
+
 
     # Split into two new pieces
     xy_hold = xy_unld1[1:unloadStartIdx-1,:];
     xy_unld = xy_unld1[unloadStartIdx:end,:];
 
-    xy_unld5 = xy_unld[1:min(Int64(round(2000*0.95)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
+    xy_unld5 = xy_unld[1:min(Int64(round(2000*0.90)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
 
 
 
@@ -387,7 +404,26 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         uld_p = resultFit.minimizer
         println(uld_p)
         stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1)
+    
+    elseif cmp(hyperParameters.unloadingFitFunction, "AP-OP") == 0
+        Dmax = xy_unld5[1,1]               
+        # Maximum indentation depth during unloading
+        
+        function unloadFitFunAP(fitCoefs)
+            return Fmax.*((dispVals .- fitCoefs[1])./(Dmax .- fitCoefs[1]) ).^( fitCoefs[2] ) .- forceVals
+        end
+        function unloadFitMinFunAP(fitCoefs)
+            sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
+        end
 
+        ctrl.plotMode && display(plot(dispVals, forceVals))
+
+        resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
+        uld_p = Optim.minimizer(resultFit)
+        #println(Optim.converged(resultFit) )
+        stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
+        #println(stiffness_fit)
+        #println([Fmax , Dmax , uld_p[1] , uld_p[2] ])
     elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
         
         unloadFitFun2(fitCoefs) = fitCoefs[1] .+ fitCoefs[2].*forceVals.^0.5 + fitCoefs[3].*forceVals.^fitCoefs[4] .- dispVals
@@ -423,8 +459,12 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     
     unloadArea = [x0^2 x0 x0^0.5 x0^0.25 x0^0.125] * p_area
     unloadArea = unloadArea[1]
+    
 
-    return 1/stiffness_fit , unloadArea
+    if stiffness < 0.0
+        stop
+    end
+    return 1/stiffness , unloadArea
     # Assign outputs
 end
 

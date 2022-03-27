@@ -133,9 +133,10 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
         # Fitting of the unloading curve.
         stiffness_fit = Array{Float64}(undef,1)    
-        dispVals = xy_unld5[1:hyperParameters.unloadingFitRange,1]
+        tempLen = minimum([hyperParameters.unloadingFitRange, length(xy_unld5[:,1])])
+        dispVals = xy_unld5[1:tempLen ,1]
         ctrl.verboseMode && println(length(dispVals))
-        forceVals = xy_unld5[1:hyperParameters.unloadingFitRange,2]
+        forceVals = xy_unld5[1:tempLen,2]
         Fmax = xy_unld5[1,2]               # Maximum force during unloading
 
         if cmp(hyperParameters.unloadingFitFunction,"Oliver-Pharr") == 0
@@ -279,4 +280,5 @@ end
     export hyperParameters
     export metaInfoExperimentalSeries
     
+    export calculateMachineCompliance
 end
