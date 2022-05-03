@@ -317,8 +317,10 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
 
         try
             currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
-            push!(collectCompliances,currentCompliance)
-            push!(collectAreas,currentArea)
+            if !isnan(currentCompliance) && !isnan(currentArea)
+                push!(collectCompliances,currentCompliance)
+                push!(collectAreas,currentArea)
+            end
         catch
             currentCompliance = NaN
             currentArea = NaN
@@ -335,12 +337,13 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
 
     println(effectiveCompliance)
     #if ctrl.plotMode 
-        #display(scatter!(squaredInverseArea , collectCompliances, 
-        #        xlab = "1/A^2 [nm]^-2", ylab = "Compliance [m/N]", lab="$(indentationSet.designatedName)"))
-        #display(plot!([ minimum(squaredInverseArea),  maximum(squaredInverseArea) ],[ effectiveCompliance[1].*[ minimum(squaredInverseArea),  maximum(squaredInverseArea) ] .+ effectiveCompliance[2]    ] ))        
+        #totalResult = scatter!(squaredInverseArea , collectCompliances, 
+        #                       xlab = "1/A^2 [nm]^-2", ylab = "Compliance [m/N]", lab="$(indentationSet.designatedName)")
+        #plot!([ minimum(squaredInverseArea),  maximum(squaredInverseArea) ],[ effectiveCompliance[1].*[ minimum(squaredInverseArea),  maximum(squaredInverseArea) ] .+ effectiveCompliance[2]    ] )
+        #savefig(totalResult,"$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
     #end
 
-    return effectiveCompliance[2]
+    return [squaredInverseArea[:]  collectCompliances[:]] # effectiveCompliance[2]
 end
 
 
@@ -364,14 +367,22 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     holdStartIdx = findStartOfHold(xy,"first")
     ctrl.plotMode && display(plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", legend = false))
     ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
-                             seriestype = :scatter, lab = "Start of hold", legend = :topleft))
+                             seriestype = :scatter, lab = "Start of hold", legend = :topright)) 
     # Split into loading and unloading.
     xy_unld1 = xy[holdStartIdx:end,:];
 
     #Determine the end of the hold time.
     unloadStartIdx = findStartOfHold(xy_unld1,"last")
-    ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter))
-
+    ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = :none))
+    if ctrl.plotMode
+        plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", label = "Signal")
+        plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
+                             seriestype = :scatter, lab = "Start of hold", legend = :topleft)
+        plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = "Start of unload")
+        println("$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
+        plot!(size=(500,500))
+        savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
+    end
 
     # Split into two new pieces
     xy_hold = xy_unld1[1:unloadStartIdx-1,:];
@@ -405,6 +416,14 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         println(uld_p)
         stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1)
     
+        if ctrl.plotMode
+            plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
+            plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit")
+            println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            plot!(size=(500,500))
+            savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+        end
+
     elseif cmp(hyperParameters.unloadingFitFunction, "AP-OP") == 0
         Dmax = xy_unld5[1,1]               
         # Maximum indentation depth during unloading
@@ -416,7 +435,7 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
             sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
         end
 
-        ctrl.plotMode && display(plot(dispVals, forceVals))
+        ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
 
         resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
         uld_p = Optim.minimizer(resultFit)
@@ -424,6 +443,14 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
         #println(stiffness_fit)
         #println([Fmax , Dmax , uld_p[1] , uld_p[2] ])
+
+        if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
+            plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
+            plot!(dispVals, unloadFitFunAP(uld_p).+forceVals , label = "Fit \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
+            plot!(size=(500,500))
+            println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+        end
     elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
         
         unloadFitFun2(fitCoefs) = fitCoefs[1] .+ fitCoefs[2].*forceVals.^0.5 + fitCoefs[3].*forceVals.^fitCoefs[4] .- dispVals
@@ -464,7 +491,12 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     if stiffness < 0.0
         stop
     end
-    return 1/stiffness , unloadArea
+
+    if uld_p[1] < 0.0
+        return NaN, NaN
+    else
+        return 1/stiffness , unloadArea
+    end
     # Assign outputs
 end
 
