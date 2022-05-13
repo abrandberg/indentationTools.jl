@@ -263,7 +263,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     deltaDisp = (xy[thermalHoldEndIdx,1] - xy[thermalHoldStartIdx,1])
 
     thermalCreepFun(x) = xy[thermalHoldStartIdx,1] .+ x[1].*(thermalHoldTime)#.^x[2]
-    thermalHoldMinFun(x) = sqrt(sum((   (thermalCreepFun(x) .- thermalHoldDisplacement)./thermalHoldDisplacement ).^2))
+    thermalHoldMinFun(x) = sqrt(sum(( (thermalCreepFun(x) .- thermalHoldDisplacement)./thermalHoldDisplacement ).^2))
 
     result = optimize(thermalHoldMinFun, [deltaDisp], BFGS(),Optim.Options(time_limit = 5.0))
     thermal_p = result.minimizer
@@ -272,7 +272,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     # dhtdt = d(h_thermal(time))/d(time)
     # The functional form accounts for any viscous effects lingering from the unloading at the start
     # of the thermal hold, while the median provides a roboust average of the thermal drift rate.
-    dhtdt = thermal_p[1];
+    dhtdt = thermal_p[1]
     return dhtdt , thermalHoldStartIdx
 end
 
@@ -389,8 +389,6 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     xy_unld = xy_unld1[unloadStartIdx:end,:];
 
     xy_unld5 = xy_unld[1:min(Int64(round(2000*0.90)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
-
-
 
     # Fitting of the unloading curve.
     stiffness_fit = Array{Float64}(undef,1)    
