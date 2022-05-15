@@ -112,7 +112,6 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
 
     #ctrl.plotMode && display(title!(string(condition3)))
-    #sleep(1.0)
     
     if condition1 #&& (length(xy_unld[:,1]) > 285) #&& condition2 && condition3
 
@@ -122,7 +121,13 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
         if cmp(indentationSet.indentationDataType, "afm") == 0
             dhtdt , thermalHoldStartIdx = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
-            thermalHoldStartIdx -= hyperParameters.sampleRate
+
+            if thermalHoldStartIdx > length(xy_unld[:,1])
+                println("Could not find a thermal hold period. Assuming no thermal hold.")
+                #println("Check results carefully.")
+                #thermalHoldStartIdx = length(xy_unld[:,1])
+                thermalHoldStartIdx = unloadStartIdx + hyperParameters.sampleRate*2
+            end
         else
             dhtdt = 0.0
             thermalHoldStartIdx = length(xy_unld[:,1])
@@ -165,17 +170,23 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
                 return Fmax.*((dispVals .- fitCoefs[1])./(Dmax .- fitCoefs[1]) ).^( fitCoefs[2] ) .- forceVals
             end
             function unloadFitMinFunAP(fitCoefs)
-                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
+                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2.0 ) )
             end
 
-            ctrl.plotMode && display(plot(dispVals, forceVals))
+            ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
 
             resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
             uld_p = Optim.minimizer(resultFit)
-            #println(Optim.converged(resultFit) )
-            stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
-            #println(stiffness_fit)
-            #println([Fmax , Dmax , uld_p[1] , uld_p[2] ])
+            stiffness_fit = Fmax.*uld_p[2].*(Dmax .- uld_p[1]).^(-1.0)
+
+
+            if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
+                plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
+                plot!(dispVals, unloadFitFunAP(uld_p).+forceVals , label = "Fit \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
+                plot!(size=(500,500))
+                println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+                savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            end
 
 
         elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
@@ -197,12 +208,18 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         
         if hyperParameters.compensateCreep
             stiffness = inv(1/stiffness_fit + h_dot_tot/(abs(dPdt[1]))); 
+            #stiffness = inv(-hyperParameters.machineCompliance + 1/stiffness_fit + h_dot_tot/(abs(dPdt[1]))); 
         else
             stiffness = stiffness_fit;
+            #println(-min(1e6,1/hyperParameters.machineCompliance))
+            #println(1/stiffness_fit)
+            
+            #stiffness = inv(-hyperParameters.machineCompliance + 1/stiffness_fit ); 
+            #println(stiffness)
         end
 
         # Equation (2) in [1]
-        maxIndentation = median(xy_unld5[1,1]) - dhtdt*(length(xy[rampStartIdx:holdStartIdx,1])+length(xy_hold[:,1]))/hyperParameters.sampleRate;  #%OBS OBS OBS
+        maxIndentation = xy_unld5[1,1] - dhtdt*(length(xy[rampStartIdx:holdStartIdx,1])+length(xy_hold[:,1]))/hyperParameters.sampleRate;  #%OBS OBS OBS
 
         if cmp(indentationSet.indenterType,"pyramid") == 0
             x0 = maxIndentation - 0.72*Fmax/stiffness;
@@ -257,7 +274,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0
     end
 
-    println(Er)
+    ctrl.verboseMode && println(Er)
 end
 
 ################################################################################
@@ -280,5 +297,7 @@ end
     export hyperParameters
     export metaInfoExperimentalSeries
     
+    # Control
     export calculateMachineCompliance
+    export areaCheck
 end

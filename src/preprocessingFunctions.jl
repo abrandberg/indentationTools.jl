@@ -227,7 +227,6 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     meanOfPlateau = mean(xy[idxTemp,2])
     stdOfPlateau = std(xy[idxTemp,2])
     
-    #noiseMultiplier = 5.0; # 15 # OBS HARD CODED AND SHOULD BE PULLED OUT!
     thermalHoldStartIdx = findlast(x -> x > meanOfPlateau+noiseMultiplier*stdOfPlateau, xy[:,2])
     thermalHoldEndIdx = findlast(x -> x > meanOfPlateau-noiseMultiplier*stdOfPlateau, xy[:,2])
 
@@ -249,7 +248,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
                 thermalHoldEndIdx -= sampleRate
             catch
                 println("Failure in the termal hold calculation")
-                return 0.0
+                return 0.0 , length(xy[:,2])
             end
         end
         ctrl.verboseMode && println("Thermal hold found using multiplier $noiseMultiplier")
@@ -313,7 +312,7 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
     collectCompliances = []
     collectAreas = []
     for file in resultNames
-        println(file)
+        ctrl.verboseMode && println(file)
 
         try
             currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
@@ -373,8 +372,9 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
 
     #Determine the end of the hold time.
     unloadStartIdx = findStartOfHold(xy_unld1,"last")
-    ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = :none))
+
     if ctrl.plotMode
+        display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = :none))
         plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", label = "Signal")
         plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
                              seriestype = :scatter, lab = "Start of hold", legend = :topleft)
@@ -437,10 +437,8 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
 
         resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
         uld_p = Optim.minimizer(resultFit)
-        #println(Optim.converged(resultFit) )
         stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
-        #println(stiffness_fit)
-        #println([Fmax , Dmax , uld_p[1] , uld_p[2] ])
+
 
         if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
             plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
@@ -455,7 +453,7 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         unloadFitMinFun2(fitCoefs) = sqrt(sum( (unloadFitFun2(fitCoefs) ./ dispVals).^2) )
         resultFit = optimize(unloadFitMinFun2, [1.0 1.0 1.0 1.0], BFGS())
         uld_p = resultFit.minimizer
-        println(uld_p)
+        #println(uld_p)
         stiffness_fit = inv(( 0.5*uld_p[2].*Fmax.^-0.5 + uld_p[4]*uld_p[3].*Fmax.^(uld_p[4] - 1.0) ))
         
     end
@@ -505,3 +503,24 @@ function importNI_forceDisplacementData(filename::String)
     return dx[:,2:3]
 end
 
+function areaCheck(indentationSet , ctrl)
+    area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
+    # % Determine the area by loading the calibration data and fitting a polynom to the data.        
+  
+    tempVec = area_xy[:,1]
+    p_area = [tempVec.^2 tempVec tempVec.^0.5 tempVec.^0.25 tempVec.^0.125] \ area_xy[:,2]
+
+
+    area_coneIndenter(indentationDepth) = 24.5.*indentationDepth.^2.0
+    area_halfSphere(indentationDepth) = π.*(2.0.*indentationDepth.*300.0 .- indentationDepth.^2.0)
+    area_halfSphere2(indentationDepth) = π.*(300.0 .*indentationDepth)
+
+    if ctrl.plotMode
+        areaFun = plot(area_xy[:,1] , area_xy[:,2], xlabel = "\$z\$ [nm]", ylabel = "Area \$A(z)\$ [nm]^2", label = split(indentationSet.areaFile, '/')[end])
+        plot!(area_xy[:,1] , area_coneIndenter(area_xy[:,1]), label = "Vickers/Berkovich")
+        plot!(area_xy[:,1] , area_halfSphere(area_xy[:,1]), label = "Halfsphere, R = 300 nm", legend = :bottomright)
+        plot!(area_xy[:,1] , area_halfSphere2(area_xy[:,1]), label = "Halfsphere contact, R = 300 nm", legend = :bottomright)
+        ylims!(0.0 , maximum(area_xy[:,2]))
+        savefig(areaFun,"$(indentationSet.areaFile[1:end-4]).png")
+    end
+end
