@@ -6,7 +6,7 @@ using DelimitedFiles
 using DataFrames
 using CSV
 using Distributions
-
+using Plots
 
 """
 ReadIBW(filename) 
@@ -192,7 +192,7 @@ function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     # 5. Find the first time the vector exceeds this value.
     # 6. This is taken as the first value in the hold sequence.
 
-    sensorRange = maximum(xy[:,2]) - minimum(xy[:,2])
+    sensorRange = ( maximum(xy[:,2]) - minimum(xy[:,2]) ) .*10e3./maximum(xy[:,2])
     vecLengthTemp = Int64(round(4.0*sensorRange))
     edgesOfHist = range(minimum(xy[:,2]), maximum(xy[:,2]), length = vecLengthTemp)
     histTemp = histcounts(xy[:,2] , edgesOfHist)
@@ -205,11 +205,12 @@ function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     idxTemp = map(x -> x > edgesOfHist[peakIdx], xy[:,2])
     
     meanOfPlateau = mean(xy[idxTemp,2])
+    stdOfPlateau = std(xy[idxTemp,2])
 
     if cmp(directionOfSearch,"first") == 0
-        returnIdx = findfirst(x -> x ≥ meanOfPlateau, xy[:,2])
+        returnIdx = findfirst(x -> x ≥ meanOfPlateau-stdOfPlateau, xy[:,2])
     elseif cmp(directionOfSearch,"last") == 0
-        returnIdx = findlast(x -> x ≥ meanOfPlateau, xy[:,2])
+        returnIdx = findlast(x -> x ≥ meanOfPlateau-stdOfPlateau, xy[:,2])
     end
 
     return returnIdx
@@ -226,7 +227,6 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     meanOfPlateau = mean(xy[idxTemp,2])
     stdOfPlateau = std(xy[idxTemp,2])
     
-    #noiseMultiplier = 5.0; # 15 # OBS HARD CODED AND SHOULD BE PULLED OUT!
     thermalHoldStartIdx = findlast(x -> x > meanOfPlateau+noiseMultiplier*stdOfPlateau, xy[:,2])
     thermalHoldEndIdx = findlast(x -> x > meanOfPlateau-noiseMultiplier*stdOfPlateau, xy[:,2])
 
@@ -248,7 +248,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
                 thermalHoldEndIdx -= sampleRate
             catch
                 println("Failure in the termal hold calculation")
-                return 0.0
+                return 0.0 , length(xy[:,2])
             end
         end
         ctrl.verboseMode && println("Thermal hold found using multiplier $noiseMultiplier")
@@ -262,7 +262,7 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     deltaDisp = (xy[thermalHoldEndIdx,1] - xy[thermalHoldStartIdx,1])
 
     thermalCreepFun(x) = xy[thermalHoldStartIdx,1] .+ x[1].*(thermalHoldTime)#.^x[2]
-    thermalHoldMinFun(x) = sqrt(sum((   (thermalCreepFun(x) .- thermalHoldDisplacement)./thermalHoldDisplacement ).^2))
+    thermalHoldMinFun(x) = sqrt(sum(( (thermalCreepFun(x) .- thermalHoldDisplacement)./thermalHoldDisplacement ).^2))
 
     result = optimize(thermalHoldMinFun, [deltaDisp], BFGS(),Optim.Options(time_limit = 5.0))
     thermal_p = result.minimizer
@@ -271,8 +271,8 @@ function determineThermalCreep(xy::Matrix{Float32},sampleRate::Int64,thermalHold
     # dhtdt = d(h_thermal(time))/d(time)
     # The functional form accounts for any viscous effects lingering from the unloading at the start
     # of the thermal hold, while the median provides a roboust average of the thermal drift rate.
-    dhtdt = thermal_p[1];
-    return dhtdt
+    dhtdt = thermal_p[1]
+    return dhtdt , thermalHoldStartIdx
 end
 
 
@@ -312,21 +312,37 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
     collectCompliances = []
     collectAreas = []
     for file in resultNames
-        println(file)
-        currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
-        push!(collectCompliances,currentCompliance)
-        push!(collectAreas,currentArea)
+        ctrl.verboseMode && println(file)
+
+        try
+            currentCompliance , currentArea = extractSingleComplianceExperiment(indentationSet,hyperParameters,ctrl,file)
+            if !isnan(currentCompliance) && !isnan(currentArea)
+                push!(collectCompliances,currentCompliance)
+                push!(collectAreas,currentArea)
+            end
+        catch
+            currentCompliance = NaN
+            currentArea = NaN
+        end
+        
     end
 
+    collectAreas = Float32.(collectAreas)
+    collectCompliances = Float32.(collectCompliances)
+    #println(collectAreas)
+    #println(collectCompliances)
     squaredInverseArea = 1.0 ./sqrt.(collectAreas)
-    effectiveCompliance = [squaredInverseArea[:] ones(size(collectCompliances))] \ collectCompliances
+    effectiveCompliance = [squaredInverseArea[:] ones(length(squaredInverseArea))] \ collectCompliances
 
-    if ctrl.plotMode 
-        scatter(squaredInverseArea , collectCompliances, 
-                xlab = "1/A^2 [nm]^-2")
-    end
+    println(effectiveCompliance)
+    #if ctrl.plotMode 
+        #totalResult = scatter!(squaredInverseArea , collectCompliances, 
+        #                       xlab = "1/A^2 [nm]^-2", ylab = "Compliance [m/N]", lab="$(indentationSet.designatedName)")
+        #plot!([ minimum(squaredInverseArea),  maximum(squaredInverseArea) ],[ effectiveCompliance[1].*[ minimum(squaredInverseArea),  maximum(squaredInverseArea) ] .+ effectiveCompliance[2]    ] )
+        #savefig(totalResult,"$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
+    #end
 
-    return effectiveCompliance[2]
+    return [squaredInverseArea[:]  collectCompliances[:]] # effectiveCompliance[2]
 end
 
 
@@ -337,31 +353,42 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     xy .*= 1e9     
     # Convert to nano-meters
 
-    #ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+    ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
 
     xy , basefit , zeroLine , rampStartIdx, xZero  = offsetAndDriftCompensation(xy)
     # Find initial contact
-    #ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+    ctrl.plotMode && display(plot!(xy[:,1],xy[:,2]))
 
     xy[:,1] .-= xy[:,2]
     xy[:,2] .*= indentationSet.springConstant
     # Convert displacement-deflection matrix to indentation-force matrix
 
     holdStartIdx = findStartOfHold(xy,"first")
-
+    ctrl.plotMode && display(plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", legend = false))
+    ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
+                             seriestype = :scatter, lab = "Start of hold", legend = :topright)) 
     # Split into loading and unloading.
     xy_unld1 = xy[holdStartIdx:end,:];
 
     #Determine the end of the hold time.
     unloadStartIdx = findStartOfHold(xy_unld1,"last")
 
+    if ctrl.plotMode
+        display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = :none))
+        plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", label = "Signal")
+        plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
+                             seriestype = :scatter, lab = "Start of hold", legend = :topleft)
+        plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = "Start of unload")
+        println("$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
+        plot!(size=(500,500))
+        savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
+    end
+
     # Split into two new pieces
     xy_hold = xy_unld1[1:unloadStartIdx-1,:];
     xy_unld = xy_unld1[unloadStartIdx:end,:];
 
-    xy_unld5 = xy_unld[1:min(Int64(round(2000*0.95)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
-
-
+    xy_unld5 = xy_unld[1:min(Int64(round(2000*0.90)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
 
     # Fitting of the unloading curve.
     stiffness_fit = Array{Float64}(undef,1)    
@@ -386,14 +413,47 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         uld_p = resultFit.minimizer
         println(uld_p)
         stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1)
+    
+        if ctrl.plotMode
+            plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
+            plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit")
+            println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            plot!(size=(500,500))
+            savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+        end
 
+    elseif cmp(hyperParameters.unloadingFitFunction, "AP-OP") == 0
+        Dmax = xy_unld5[1,1]               
+        # Maximum indentation depth during unloading
+        
+        function unloadFitFunAP(fitCoefs)
+            return Fmax.*((dispVals .- fitCoefs[1])./(Dmax .- fitCoefs[1]) ).^( fitCoefs[2] ) .- forceVals
+        end
+        function unloadFitMinFunAP(fitCoefs)
+            sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
+        end
+
+        ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
+
+        resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
+        uld_p = Optim.minimizer(resultFit)
+        stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
+
+
+        if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
+            plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
+            plot!(dispVals, unloadFitFunAP(uld_p).+forceVals , label = "Fit \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
+            plot!(size=(500,500))
+            println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+        end
     elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
         
         unloadFitFun2(fitCoefs) = fitCoefs[1] .+ fitCoefs[2].*forceVals.^0.5 + fitCoefs[3].*forceVals.^fitCoefs[4] .- dispVals
         unloadFitMinFun2(fitCoefs) = sqrt(sum( (unloadFitFun2(fitCoefs) ./ dispVals).^2) )
         resultFit = optimize(unloadFitMinFun2, [1.0 1.0 1.0 1.0], BFGS())
         uld_p = resultFit.minimizer
-        println(uld_p)
+        #println(uld_p)
         stiffness_fit = inv(( 0.5*uld_p[2].*Fmax.^-0.5 + uld_p[4]*uld_p[3].*Fmax.^(uld_p[4] - 1.0) ))
         
     end
@@ -422,8 +482,17 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     
     unloadArea = [x0^2 x0 x0^0.5 x0^0.25 x0^0.125] * p_area
     unloadArea = unloadArea[1]
+    
 
-    return 1/stiffness_fit , unloadArea
+    if stiffness < 0.0
+        stop
+    end
+
+    if uld_p[1] < 0.0
+        return NaN, NaN
+    else
+        return 1/stiffness , unloadArea
+    end
     # Assign outputs
 end
 
@@ -434,3 +503,24 @@ function importNI_forceDisplacementData(filename::String)
     return dx[:,2:3]
 end
 
+function areaCheck(indentationSet , ctrl)
+    area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
+    # % Determine the area by loading the calibration data and fitting a polynom to the data.        
+  
+    tempVec = area_xy[:,1]
+    p_area = [tempVec.^2 tempVec tempVec.^0.5 tempVec.^0.25 tempVec.^0.125] \ area_xy[:,2]
+
+
+    area_coneIndenter(indentationDepth) = 24.5.*indentationDepth.^2.0
+    area_halfSphere(indentationDepth) = π.*(2.0.*indentationDepth.*300.0 .- indentationDepth.^2.0)
+    area_halfSphere2(indentationDepth) = π.*(300.0 .*indentationDepth)
+
+    if ctrl.plotMode
+        areaFun = plot(area_xy[:,1] , area_xy[:,2], xlabel = "\$z\$ [nm]", ylabel = "Area \$A(z)\$ [nm]^2", label = split(indentationSet.areaFile, '/')[end])
+        plot!(area_xy[:,1] , area_coneIndenter(area_xy[:,1]), label = "Vickers/Berkovich")
+        plot!(area_xy[:,1] , area_halfSphere(area_xy[:,1]), label = "Halfsphere, R = 300 nm", legend = :bottomright)
+        plot!(area_xy[:,1] , area_halfSphere2(area_xy[:,1]), label = "Halfsphere contact, R = 300 nm", legend = :bottomright)
+        ylims!(0.0 , maximum(area_xy[:,2]))
+        savefig(areaFun,"$(indentationSet.areaFile[1:end-4]).png")
+    end
+end
