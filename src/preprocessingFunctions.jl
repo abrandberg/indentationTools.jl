@@ -354,31 +354,40 @@ end
 
 
 function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
+    
     xy = IBWtoTXT(indentationSet.targetDir*resultFile)
     # Import signal
-
     xy .*= 1e9     
     # Convert to nano-meters
 
-    ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
-
     xy , basefit , zeroLine , rampStartIdx, xZero  = offsetAndDriftCompensation(xy)
     # Find initial contact
-    ctrl.plotMode && display(plot!(xy[:,1],xy[:,2]))
 
     xy[:,1] .-= xy[:,2]
     xy[:,2] .*= indentationSet.springConstant
     # Convert displacement-deflection matrix to indentation-force matrix
 
-    holdStartIdx = findStartOfHold(xy,"first")
-    ctrl.plotMode && display(plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", legend = false))
-    ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
-                             seriestype = :scatter, lab = "Start of hold", legend = :topright)) 
+    # Determine the start of the hold time at circa max force.
+    if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
+        holdStartIdx = findStartOfHold(xy,"first")
+    elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
+        holdStartIdx = argmax(xy[:,2])
+    else
+        throw(DomainError(hyperParameters.controlLoop, "controlLoop setting not defined."))
+    end
+
     # Split into loading and unloading.
     xy_unld1 = xy[holdStartIdx:end,:];
 
     #Determine the end of the hold time.
-    unloadStartIdx = findStartOfHold(xy_unld1,"last")
+    if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
+        unloadStartIdx = findStartOfHold(xy_unld1,"last")
+    elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
+        println("entered displacement branch")
+        unloadStartIdx = max(argmax(xy_unld1[:,1]) , findStartOfHold(xy_unld1,"last"))
+    else
+        throw(DomainError(hyperParameters.controlLoop, "controlLoop setting not defined."))
+    end
 
     if ctrl.plotMode
         display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter, label = :none))
@@ -392,15 +401,24 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     end
 
     # Split into two new pieces
-    xy_hold = xy_unld1[1:unloadStartIdx-1,:];
-    xy_unld = xy_unld1[unloadStartIdx:end,:];
+    xy_hold = xy_unld1[1:unloadStartIdx-1,:]
+    xy_unld = xy_unld1[unloadStartIdx:end,:]
 
-    xy_unld5 = xy_unld[1:min(Int64(round(2000*0.90)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
+    dhtdt , thermalHoldStartIdx = determineThermalCreep(xy,hyperParameters.sampleRate,indentationSet.thermalHoldTime,ctrl,hyperParameters.noiseMultiplier)
+    if thermalHoldStartIdx > length(xy_unld[:,1])
+        println("Could not find a thermal hold period. Assuming no thermal hold.")
+        thermalHoldStartIdx = unloadStartIdx + hyperParameters.sampleRate*2
+    end
+    xy_unld5 = xy_unld[1:thermalHoldStartIdx,:]
+
+    #xy_unld5 = xy_unld[1:min(Int64(round(2000*0.90)),size(xy_unld,1)),:];  # OBS 2000 is hard coded!
 
     # Fitting of the unloading curve.
     stiffness_fit = Array{Float64}(undef,1)    
-    dispVals = xy_unld5[1:min(hyperParameters.unloadingFitRange,size(xy_unld5,1)),1]
-    forceVals = xy_unld5[1:min(hyperParameters.unloadingFitRange,size(xy_unld5,1)),2]
+    tempLen = minimum([hyperParameters.unloadingFitRange, length(xy_unld5[:,1])])
+
+    dispVals = xy_unld5[1:tempLen ,1]
+    forceVals = xy_unld5[1:tempLen,2]
     Fmax = xy_unld5[1,2]               # Maximum force during unloading
 
     if cmp(hyperParameters.unloadingFitFunction,"Oliver-Pharr") == 0
@@ -440,7 +458,7 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
             sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
         end
 
-        ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
+        #ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
 
         resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
         uld_p = Optim.minimizer(resultFit)

@@ -10,6 +10,7 @@
 # SECTION       CONTENTS
 #       1       Struct definitions.
 #       2       Import and preprocess data functions
+#       3       Main functions
 module indentationTools
 
 ################################################################################
@@ -39,16 +40,19 @@ struct hyperParameters
     constrainTail           ::Bool           # [Bool] Experimental, not implemented
     machineCompliance       ::Float64        # [m/N] Machine compliance
     noiseMultiplier         ::Float64        # [-] Number of standard deviations to add when thermal hold is missed.
+    controlLoop             ::String         # Control for the indentation. Can be "force" or "nanoindentation"
 
     # Input checks
     hyperParameters(sampleRate, unloadingFitRange, unloadingFitFunction, 
                     compensateCreep, constrainHead, constrainTail, 
-                    machineCompliance, noiseMultiplier) = sampleRate ≤ 0        ? throw(DomainError(sampleRate, "sampleRate must be a positive integer."))           : 
-                                                          unloadingFitRange ≤ 1 ? throw(DomainError(unloadingFitRange , "unloadingFitRange must be larger than 1.")) :  
-                                                          unloadingFitFunction ∉ ["Oliver-Pharr" , "AP-OP" , "Feng"] ? throw(DomainError(unloadingFitFunction , "unloadingFitFunction $unloadingFitFunction is not implemented.")) :                
-                                                          machineCompliance < 0.0 ?  throw(DomainError(machineCompliance , "machineCompliance must be ≥ 0.0."))      :
-                                                          noiseMultiplier ≤ 0.0 ?  throw(DomainError(noiseMultiplier , "noiseMultiplier must be > 0.0."))            :
-                    new(sampleRate, unloadingFitRange, unloadingFitFunction, compensateCreep, constrainHead, constrainTail, machineCompliance, noiseMultiplier)   
+                    machineCompliance, noiseMultiplier , controlLoop) = 
+                                                        sampleRate ≤ 0        ? throw(DomainError(sampleRate, "sampleRate must be a positive integer."))           : 
+                                                        unloadingFitRange ≤ 1 ? throw(DomainError(unloadingFitRange , "unloadingFitRange must be larger than 1.")) :  
+                                                        unloadingFitFunction ∉ ["Oliver-Pharr" , "AP-OP" , "Feng"] ? throw(DomainError(unloadingFitFunction , "unloadingFitFunction $unloadingFitFunction is not implemented.")) :                
+                                                        machineCompliance < 0.0 ?  throw(DomainError(machineCompliance , "machineCompliance must be ≥ 0.0."))      :
+                                                        noiseMultiplier ≤ 0.0 ?  throw(DomainError(noiseMultiplier , "noiseMultiplier must be > 0.0."))            :
+                                                        controlLoop ∉ ["force" , "displacement"] ?  throw(DomainError(controlLoop , "controlLoop $controlLoop is not implemented.")) :
+                    new(sampleRate, unloadingFitRange, unloadingFitFunction, compensateCreep, constrainHead, constrainTail, machineCompliance, noiseMultiplier, controlLoop)   
 end
 
 
@@ -93,7 +97,7 @@ include("preprocessingFunctions.jl")
 function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
 
 
-    if cmp(indentationSet.indentationDataType, "afm") == 0
+    if cmp(lowercase(indentationSet.indentationDataType), "afm") == 0
         xy = IBWtoTXT(indentationSet.targetDir*resultFile)
         # Import signal
 
@@ -111,7 +115,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         xy[:,1] .-= hyperParameters.machineCompliance.*xy[:,2];
         # Convert displacement-deflection matrix to indentation-force matrix
 
-    elseif cmp(indentationSet.indentationDataType, "ni") == 0
+    elseif cmp( lowercase( indentationSet.indentationDataType), "ni") == 0
         xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
         # Import data
         xy = Float32.(xy)
@@ -125,33 +129,41 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
     end
 
-    
-        
-    #################################################################
     # Determine the start of the hold time at circa max force.
-    # 
-    # 1. Determine range of deflection values.
-    # 2. Bin the values (heuristic bin size at the moment)
-    # 3. Determine the most common deflection value at the highest load levels under the assumption that this bin will contain 
-    #    the hold sequence.
-    # 4. Determine the mean value of all values larger than this bin value.
-    # 5. Find the first time the vector exceeds this value.
-    # 6. This is taken as the first value in the hold sequence.
-    holdStartIdx = findStartOfHold(xy,"first")
-    ctrl.plotMode && display(plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", legend = false))
-    ctrl.plotMode && display(plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], 
-                             seriestype = :scatter, lab = "Start of hold", legend = :topleft))
-
+    if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
+        holdStartIdx = findStartOfHold(xy,"first")
+    elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
+        holdStartIdx = argmax(xy[:,2])
+    else
+        throw(DomainError(hyperParameters.controlLoop, "controlLoop setting not defined."))
+    end
+    
+    
     # Split into loading and unloading.
-    xy_unld1 = xy[holdStartIdx:end,:];
+    xy_unld1 = xy[holdStartIdx:end,:]
 
     #Determine the end of the hold time.
-    unloadStartIdx = findStartOfHold(xy_unld1,"last")
-    ctrl.plotMode && display(plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]],seriestype = :scatter))
-
+    if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
+        unloadStartIdx = findStartOfHold(xy_unld1,"last")
+    elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
+        unloadStartIdx = max(argmax(xy_unld1[:,1]) , findStartOfHold(xy_unld1,"last"))
+    else
+        throw(DomainError(hyperParameters.controlLoop, "controlLoop setting not defined."))
+    end
+    
     # Split into two new pieces
-    xy_hold = xy_unld1[1:unloadStartIdx-1,:];
-    xy_unld = xy_unld1[unloadStartIdx:end,:];
+    xy_hold = xy_unld1[1:unloadStartIdx-1,:]
+    xy_unld = xy_unld1[unloadStartIdx:end,:]
+
+    if ctrl.plotMode
+        plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", label = "Signal")
+        plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], seriestype = :scatter, lab = "Start of hold")
+        plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], seriestype = :scatter, lab = "Start of unload", legend = :topleft)
+        plot!(size=(500,500))
+        savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
+    end
+
+
 
     # Accept only indentations that had positive creep. "Negative" creep (indenter moves outwards 
     # during hold sequence) can occur if the thermal drift is substantial, but this typically
@@ -171,8 +183,6 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
             if thermalHoldStartIdx > length(xy_unld[:,1])
                 println("Could not find a thermal hold period. Assuming no thermal hold.")
-                #println("Check results carefully.")
-                #thermalHoldStartIdx = length(xy_unld[:,1])
                 thermalHoldStartIdx = unloadStartIdx + hyperParameters.sampleRate*2
             end
         else
@@ -180,13 +190,13 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             thermalHoldStartIdx = length(xy_unld[:,1])
         end
         xy_unld5 = xy_unld[1:thermalHoldStartIdx,:]
-        ctrl.plotMode && display(plot!(xy_unld5[:,1], xy_unld5[:,2]))
+        
 
         # Fitting of the unloading curve.
         stiffness_fit = Array{Float64}(undef,1)    
         tempLen = minimum([hyperParameters.unloadingFitRange, length(xy_unld5[:,1])])
+
         dispVals = xy_unld5[1:tempLen ,1]
-        
         forceVals = xy_unld5[1:tempLen,2]
         Fmax = xy_unld5[1,2]               # Maximum force during unloading
 
@@ -311,7 +321,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         # % Equation (1) in [1]
         Er = sqrt(pi)/(2.0)/sqrt(unloadArea) / ( 1.0/stiffness )
 
-        if cmp(indentationSet.indenterType,"pyramid") == 0
+        if cmp( lowercase( indentationSet.indenterType),"pyramid") == 0
             Er = Er/1.05;
         end
         return Er , maxIndentation , x0 ,  unloadArea , stiffness  , uld_p[2]

@@ -281,23 +281,26 @@ end
 
 @testset "Test hyperParameters struct    " begin
     # SamplingRate must be a positive integer.
-    @test_throws DomainError hyperParameters( 0, 1200, "AP-OP", false, false, false, 0.0, 5.0)
+    @test_throws DomainError hyperParameters( 0, 1200, "AP-OP", false, false, false, 0.0, 5.0 , "force")
     # SamplingRate must be a positive integer
-    @test_throws DomainError hyperParameters( -2000, 1200, "AP-OP", false, false, false, 0.0, 5.0)
+    @test_throws DomainError hyperParameters( -2000, 1200, "AP-OP", false, false, false, 0.0, 5.0 , "force")
 
     # unloadingFitRange > 1.
-    @test_throws DomainError hyperParameters( 1, 0, "AP-OP", false, false, false, 0.0, 5.0)
-    @test_throws DomainError hyperParameters( 1, -1, "AP-OP", false, false, false, 0.0, 5.0)
+    @test_throws DomainError hyperParameters( 1, 0, "AP-OP", false, false, false, 0.0, 5.0 , "force")
+    @test_throws DomainError hyperParameters( 1, -1, "AP-OP", false, false, false, 0.0, 5.0 , "force")
 
     # unloadingFitFunction must be implemented.
-    @test_throws DomainError hyperParameters( 1, 1200, "XP", false, false, false, 0.0, 5.0)
+    @test_throws DomainError hyperParameters( 1, 1200, "XP", false, false, false, 0.0, 5.0 , "force")
 
     # machineCompliance must not be negative.
-    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, -0.1, 5.0)
+    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, -0.1, 5.0 , "force")
 
     # noiseMultiplier must be greater than 0.
-    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, 0.1, -5.0)
-    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, 0.1, 0.0)   
+    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, 0.1, -5.0 , "force")
+    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, 0.1, 0.0 , "force")   
+
+    # controlLoop must be implemented.
+    @test_throws DomainError hyperParameters( 1, 1200, "AP-OP", false, false, false, 0.1, 5.0 , "forceX")   
 end
 
 
@@ -316,25 +319,25 @@ end
 
     # Regression tests
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 2.0)
+        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         #println("Er is $Er GPa")
         isapprox(1.8696, Er ,rtol = 0.05)
     end
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", true, 0, 0, 0.0, 2.0)
+        hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", true, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         #println("Er is $Er GPa")
         isapprox(1.6, Er,rtol = 0.05)
     end
     @test begin
-        hp =  hyperParameters( 2000, 1400, "Feng", false, 0, 0, 0.0, 2.0)
+        hp =  hyperParameters( 2000, 1400, "Feng", false, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         #println("Er is $Er GPa")
         isapprox( 1.9289, Er,rtol = 0.05)
     end
     @test begin
-        hp = hyperParameters( 2000, 1400, "Feng", true, 0, 0, 0.0, 2.0)
+        hp = hyperParameters( 2000, 1400, "Feng", true, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonMG.ibw")
         #println("Er is $Er GPa")
         isapprox( 1.622, Er, rtol = 0.05)
@@ -350,25 +353,25 @@ end
                                         0, 
                                         "ni")
      @test begin
-        hp =  hyperParameters( 10, 200, "Oliver-Pharr", false, 0, 0, 0.0, 2.0)
+        hp =  hyperParameters( 10, 200, "Oliver-Pharr", false, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
         isapprox( 2.871314842239161, Er, rtol = 1.15)
      end
      @test begin
-        hp =  hyperParameters( 10, 200, "AP-OP", false, 0, 0, 0.0, 2.0)
+        hp =  hyperParameters( 10, 200, "AP-OP", false, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
         isapprox( 2.9104987116718184, Er, rtol = 1.15)
      end
      @test begin
-        hp =  hyperParameters( 10, 200, "Feng", false, 0, 0, 0.0, 2.0)
+        hp =  hyperParameters( 10, 200, "Feng", false, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
         isapprox( 2.8041684985519852, Er, rtol = 1.15)
     end
     @test begin
-        hp =  hyperParameters( 10, 200, "Feng", true, 0, 0, 0.0, 2.0)
+        hp =  hyperParameters( 10, 200, "Feng", true, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
         isapprox( 2.5278698699501563 , Er, rtol = 1.15)
