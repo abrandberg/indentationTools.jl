@@ -332,7 +332,14 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
     #println(collectAreas)
     #println(collectCompliances)
     squaredInverseArea = 1.0 ./sqrt.(collectAreas)
-    effectiveCompliance = [squaredInverseArea[:] ones(length(squaredInverseArea))] \ collectCompliances
+    
+    if length(squaredInverseArea) > 0
+        effectiveCompliance = [squaredInverseArea[:] ones(length(squaredInverseArea))] \ collectCompliances
+    else
+        println("----> No accepted measurements")
+    end
+
+
 
     println(effectiveCompliance)
     #if ctrl.plotMode 

@@ -2,17 +2,56 @@ module indentationTools
 
 ################################################################################
 ## Structs used
+"""
+hyperParameters(sampleRate::Int, unloadingFitRange::Int, unloadingFitFunction::String, constrainHead::Int, constrainTail::Int, machineCompliance::Float64, noiseMultiplier::Float64)
+
+Sets instructions for how the files should be treated. The assumption is that all files in an indentation set share sample rate and that all files should be treated equally.
+
+- sampleRate : [Hz] {> 0} Force-indentation data sample rate.
+- unloadingFitRange : [-] {> 1} Number of samples to be included in the fit.
+- unloadingFitFunction : [] Should be "Oliver-Pharr", "AP-OP" or "Feng".
+- compensateCreep : [] Whether to attempt to use Ngan's method to compensate for creep during the indentation.
+- constrainHead : Experimental, not implemented.
+- constrainTail : Experimental, not implemented.
+- machineCompliance : [m/N] {≥ 0.0} Machine compliance.
+- noiseMultiplier : [-] {> 0} Number of signal standard deviations to add per loop when the thermal hold is missed.
+
+"""
 struct hyperParameters
-    sampleRate              ::Int64          # [Hz] Sample rate.
-    unloadingFitRange       ::Int64          # [-] Vector samples lengths (measured from start of unloading) to be included in unload fit.
-    unloadingFitFunction    ::String         # [string] Function to use when fitting.
+    sampleRate              ::Int            # [Hz] Sample rate.
+    unloadingFitRange       ::Int            # [-] Vector samples lengths (measured from start of unloading) to be included in unload fit.
+    unloadingFitFunction    ::String         # [String] Function to use when fitting.
     compensateCreep         ::Bool           # [Bool] Compensate creep using Feng's method, y/n
-    constrainHead           ::Int            # Experimental, not implemented
-    constrainTail           ::Int            # Experimental, not implemented
-    machineCompliance       ::Float64        # Machine compliance
-    noiseMultiplier         ::Float64        # Number of standard deviations to add when thermal hold is missed.
+    constrainHead           ::Bool           # [Bool] Experimental, not implemented
+    constrainTail           ::Bool           # [Bool] Experimental, not implemented
+    machineCompliance       ::Float64        # [m/N] Machine compliance
+    noiseMultiplier         ::Float64        # [-] Number of standard deviations to add when thermal hold is missed.
+
+    # Input checks
+    hyperParameters(sampleRate, unloadingFitRange, unloadingFitFunction, 
+                    compensateCreep, constrainHead, constrainTail, 
+                    machineCompliance, noiseMultiplier) = sampleRate ≤ 0        ? throw(DomainError(sampleRate, "sampleRate must be a positive integer."))           : 
+                                                          unloadingFitRange ≤ 1 ? throw(DomainError(unloadingFitRange , "unloadingFitRange must be larger than 1.")) :  
+                                                          unloadingFitFunction ∉ ["Oliver-Pharr" , "AP-OP" , "Feng"] ? throw(DomainError(unloadingFitFunction , "unloadingFitFunction $unloadingFitFunction is not implemented.")) :                
+                                                          machineCompliance < 0.0 ?  throw(DomainError(machineCompliance , "machineCompliance must be ≥ 0.0."))      :
+                                                          noiseMultiplier ≤ 0.0 ?  throw(DomainError(noiseMultiplier , "noiseMultiplier must be > 0.0."))            :
+                    new(sampleRate, unloadingFitRange, unloadingFitFunction, compensateCreep, constrainHead, constrainTail, machineCompliance, noiseMultiplier)   
 end
 
+
+"""
+control(plotMode::Bool,verboseMode::Bool) 
+
+controls what outputs are generated when code from the package indentationTools is run.
+
+- plotMode    - If true, generate and save plots during the processing of files.
+- verboseMode - If true, report back information to the terminal.
+
+Example:
+```
+control(true, false)        # Generate plots, but no verbose output.
+```
+"""
 struct control
     plotMode                ::Bool           # Activates plotting of intermediate results
     verboseMode             ::Bool           # Verbose output
