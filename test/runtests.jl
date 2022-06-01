@@ -203,43 +203,43 @@ end
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(44.0,4.0,1.1)
 
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-4.0 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , creepVal , rtol = 0.10)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,4.0,1.1)
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-4.0 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , creepVal,rtol = 0.10)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,0.20,1.1)
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-0.2 * 1.1*holdTimeVals[end]^(1.1 - 1.0) , creepVal,rtol = 0.10)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,4.00,0.8)
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-4.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , creepVal,rtol = 0.15)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(0.0,4.00,0.8)
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-4.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , creepVal,rtol = 0.15)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,0.00,0.8)
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-0.0 * 0.8*holdTimeVals[end]^(0.8 - 1.0) , creepVal,atol = 0.05)
     end
     @test begin
         xyStart = [collect( 1000.0:-1:500 ) ; 500.0.+10.0*rand(8998) ; collect(500:-1:0.0)]
         xy_hold = thermalCreepGenerator(123.0,4.00,0.0)
-        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false), 5.0)
+        creepVal , thermalHoldStartIdx = determineThermalCreep(Float32.([xy_hold[end:-1:1] xyStart]),sampleRate, thermalHoldTime, control(false, false, false), 5.0)
         isapprox(-4.0 * 0.0*holdTimeVals[end]^(0.0 - 1.0) , creepVal, atol = 0.25)
     end
 end
@@ -306,7 +306,7 @@ end
 
 
 @testset "modulusfitter                  " begin
-    ctrl = control(true, false)
+    ctrl = control(true, false, false)
     indentSet = metaInfoExperimentalSeries("Test2", 
                                             50.0,
                                         "hemisphere",

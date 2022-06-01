@@ -72,6 +72,7 @@ control(true, false)        # Generate plots, but no verbose output.
 struct control
     plotMode                ::Bool           # Activates plotting of intermediate results
     verboseMode             ::Bool           # Verbose output
+    writeToFile             ::Bool           # Whether to save results as CSV files.
 end
 
 struct metaInfoExperimentalSeries
