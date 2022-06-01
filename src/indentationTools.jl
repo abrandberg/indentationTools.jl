@@ -277,7 +277,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         elseif cmp(lowercase(indentationSet.indenterType),"hemisphere") == 0
             x0 = maxIndentation - 0.75*Fmax/stiffness;
         end
-        x0 < 0.0 && return 0.0 , maxIndentation , x0 , 0.0 , stiffness , uld_p[3]
+        x0 < 0.0 && return 0.0 , maxIndentation , x0 , 0.0 , stiffness , uld_p[3] , 0.0
 
 
         if cmp(lowercase(indentationSet.areaFile), "vickers") == 0 || cmp(lowercase(indentationSet.areaFile), "berkovich") == 0
@@ -317,17 +317,27 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             unloadArea = [x0^2 x0 x0^0.5 x0^0.25 x0^0.125] * p_area
             unloadArea = unloadArea[1]
         end
-        unloadArea < 0.0 && return 0.0 , maxIndentation , x0 , unloadArea , stiffness , uld_p[3]
+        unloadArea < 0.0 && return 0.0 , maxIndentation , x0 , unloadArea , stiffness , uld_p[3], 0.0
         
+
+
         # % Equation (1) in [1]
         Er = sqrt(pi)/(2.0)/sqrt(unloadArea) / ( 1.0/stiffness )
+
+        # Hardness, Equation (4) in 
+        # Oliver, W.C., Pharr, G.M. 
+        # An improved technique for determining hardness and elastic modulus using load and 
+        # displacement sensing indentation experiments.
+        # Journal of Materials Research 7, 1564–1583 (1992). https://doi.org/10.1557/JMR.1992.1564
+        H = Fmax./unloadArea
+
 
         if cmp( lowercase( indentationSet.indenterType),"pyramid") == 0
             Er = Er/1.05;
         end
-        return Er , maxIndentation , x0 ,  unloadArea , stiffness  , uld_p[2]
+        return Er , maxIndentation , x0 ,  unloadArea , stiffness  , uld_p[2] , H
     else
-        return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0
+        return 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0, 0.0
     end
 
     ctrl.verboseMode && println(Er)

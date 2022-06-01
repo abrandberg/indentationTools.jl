@@ -383,7 +383,6 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
     if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
         unloadStartIdx = findStartOfHold(xy_unld1,"last")
     elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
-        println("entered displacement branch")
         unloadStartIdx = max(argmax(xy_unld1[:,1]) , findStartOfHold(xy_unld1,"last"))
     else
         throw(DomainError(hyperParameters.controlLoop, "controlLoop setting not defined."))
