@@ -335,13 +335,14 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
     
     if length(squaredInverseArea) > 0
         effectiveCompliance = [squaredInverseArea[:] ones(length(squaredInverseArea))] \ collectCompliances
+        println(effectiveCompliance) 
     else
         println("----> No accepted measurements")
     end
 
 
 
-    println(effectiveCompliance)
+    
     #if ctrl.plotMode 
         #totalResult = scatter!(squaredInverseArea , collectCompliances, 
         #                       xlab = "1/A^2 [nm]^-2", ylab = "Compliance [m/N]", lab="$(indentationSet.designatedName)")

@@ -293,12 +293,13 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Volume 46, Issue 5, 2009, Pages 1095-1104,
             # https://doi.org/10.1016/j.ijsolstr.2008.10.032
 
-        #elseif cmp(lowercase(indentationSet.areaFile), "halfsphere") == 0 || cmp(lowercase(indentationSet.areaFile), "sphere") == 0
+        elseif cmp(lowercase(indentationSet.areaFile), "halfsphere") == 0 || cmp(lowercase(indentationSet.areaFile), "sphere") == 0
             # Needs radius of the indenter to work!
 
-            # area_xy(indentationDepth) = π.*(2.0.*indentationDepth.*300.0 .- indentationDepth.^2.0)
+            areaSphere(indentationDepth) = π.*(2.0.*indentationDepth.*300.0 .- indentationDepth.^2.0)
             # # Define function
-            # unloadArea = area_xy(x0)
+            #println(areaSphere)
+            unloadArea = areaSphere(x0)
             # # Extract value
 
         else
@@ -343,6 +344,52 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     ctrl.verboseMode && println(Er)
 end
 
+
+
+"""
+adhesionForce(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String) 
+
+calculates the adhesion force F_ad when the indenter is retracted. Note that this calculation can be performed
+independently of the indentation modulus calculations.
+
+- indentationSet    - A set of indentation info.
+- hyperParameters   - Additional parameters necessary.
+- ctrl              - Control structure for plotting and printing.
+- resultFile        - The file to be loaded. 
+
+"""
+function adhesionForce(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
+
+    if cmp(lowercase(indentationSet.indentationDataType), "afm") == 0
+        
+        xy = IBWtoTXT(indentationSet.targetDir*resultFile)
+        # Import signal
+        xy .*= 1e9     
+        # Convert to nano-meters
+
+        ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+
+        xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
+        # Find initial contact
+        ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+
+        xy[:,1] .-= xy[:,2]
+        xy[:,2] .*= indentationSet.springConstant
+        xy[:,1] .-= hyperParameters.machineCompliance.*xy[:,2];
+        # Convert displacement-deflection matrix to indentation-force matrix
+
+    elseif cmp( lowercase( indentationSet.indentationDataType), "ni") == 0
+        println("Only AFM-based adhesion force measurements are implemented at the moment.")
+    end
+
+    F_ad = minimum(xy[:,2])
+
+    return F_ad
+
+end
+
+
+
 ################################################################################
 # Export functions
     # Data import
@@ -359,6 +406,7 @@ end
 
     # Principal functions/functionality
     export modulusfitter
+    export adhesionForce
     export control
     export hyperParameters
     export metaInfoExperimentalSeries
