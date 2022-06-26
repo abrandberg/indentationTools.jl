@@ -347,7 +347,7 @@ end
 
 
 """
-adhesionForce(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String) 
+determineAdhesionForce(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String) 
 
 calculates the adhesion force F_ad when the indenter is retracted. Note that this calculation can be performed
 independently of the indentation modulus calculations.
@@ -358,7 +358,7 @@ independently of the indentation modulus calculations.
 - resultFile        - The file to be loaded. 
 
 """
-function adhesionForce(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
+function determineAdhesionForce(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
 
     if cmp(lowercase(indentationSet.indentationDataType), "afm") == 0
         
@@ -406,7 +406,7 @@ end
 
     # Principal functions/functionality
     export modulusfitter
-    export adhesionForce
+    export determineAdhesionForce
     export control
     export hyperParameters
     export metaInfoExperimentalSeries
