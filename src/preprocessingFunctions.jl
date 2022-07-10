@@ -340,16 +340,6 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
         println("----> No accepted measurements")
     end
 
-
-
-    
-    #if ctrl.plotMode 
-        #totalResult = scatter!(squaredInverseArea , collectCompliances, 
-        #                       xlab = "1/A^2 [nm]^-2", ylab = "Compliance [m/N]", lab="$(indentationSet.designatedName)")
-        #plot!([ minimum(squaredInverseArea),  maximum(squaredInverseArea) ],[ effectiveCompliance[1].*[ minimum(squaredInverseArea),  maximum(squaredInverseArea) ] .+ effectiveCompliance[2]    ] )
-        #savefig(totalResult,"$(indentationSet.targetDir)$(resultFile[1:end-4]).png")
-    #end
-
     return [squaredInverseArea[:]  collectCompliances[:]] # effectiveCompliance[2]
 end
 
@@ -458,8 +448,6 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
             sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2 ) )
         end
 
-        #ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
-
         resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
         uld_p = Optim.minimizer(resultFit)
         stiffness_fit = Fmax.*uld_p[2]*(Dmax .- uld_p[1]).^(-1.0)
@@ -472,15 +460,6 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
             println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
             savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
         end
-    elseif cmp(hyperParameters.unloadingFitFunction, "Feng") == 0
-        
-        unloadFitFun2(fitCoefs) = fitCoefs[1] .+ fitCoefs[2].*forceVals.^0.5 + fitCoefs[3].*forceVals.^fitCoefs[4] .- dispVals
-        unloadFitMinFun2(fitCoefs) = sqrt(sum( (unloadFitFun2(fitCoefs) ./ dispVals).^2) )
-        resultFit = optimize(unloadFitMinFun2, [1.0 1.0 1.0 1.0], BFGS())
-        uld_p = resultFit.minimizer
-        #println(uld_p)
-        stiffness_fit = inv(( 0.5*uld_p[2].*Fmax.^-0.5 + uld_p[4]*uld_p[3].*Fmax.^(uld_p[4] - 1.0) ))
-        
     end
     stiffness = stiffness_fit
     dhtdt = 0;
@@ -513,7 +492,7 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         stop
     end
 
-    if uld_p[1] < 0.0
+    if uld_p[1] < 0.0 || uld_p[2] < 1.3 || uld_p[2] > 2.5
         return NaN, NaN
     else
         return 1/stiffness , unloadArea
