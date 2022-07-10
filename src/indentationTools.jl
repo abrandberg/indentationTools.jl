@@ -119,10 +119,12 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     elseif cmp( lowercase( indentationSet.indentationDataType), "ni") == 0
         xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
         # Import data
-        xy = Float32.(xy)
-        # Convert to Float32
+        
         xy[:,2] *= 1.0e6
         # Convert force to nano-Newtons
+        
+        xy = Float32.(xy)
+        # Convert to Float32
         
         rampStartIdx = 1
         # Software handles rampStart, so set to 1.
@@ -136,7 +138,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
         holdStartIdx = argmax(xy[:,2])
     else
-        throw(DomainError(hyperParameters.controlLoop, "controlLoop setting not defined."))
+        throw(DomainError( string(hyperParameters.controlLoop), "controlLoop setting not defined."))
     end
     
     
