@@ -186,23 +186,14 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         scatter!([xy[holdStartIdx,1]] , [xy[holdStartIdx,2]], label = "Start of hold")
         scatter!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], label = "Start of unload")
         savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
-        #plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "", ylab = "", label = "Signal")
-        #plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], seriestype = :scatter, lab = "Start of hold")
-        #plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], seriestype = :scatter, lab = "Start of unload", legend = :topleft)
-        #plot!(size=(500,500))
-        #savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
     end
-
-
 
     # Accept only indentations that had positive creep. "Negative" creep (indenter moves outwards 
     # during hold sequence) can occur if the thermal drift is substantial, but this typically
     # indicates that the system was not in equilibrium (since the thermal drift dominates the creep)
     # and furthermore it messes up the mathematical framework if you accept such indentations (see
-    # Cheng & Cheng articles.)
-    condition1 = xy[holdStartIdx,1] < xy_unld1[unloadStartIdx,1] 
-        
-    if condition1
+    # Cheng & Cheng articles.)      
+    if xy[holdStartIdx,1] < xy_unld1[unloadStartIdx,1] 
 
         ctrl.plotMode && display(plot(xy_unld[:,1], xy_unld[:,2]))
         ctrl.verboseMode && println(length(xy_unld[:,1]))
@@ -221,14 +212,14 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         end
         xy_unld5 = xy_unld[1:thermalHoldStartIdx,:]
         
-
         # Fitting of the unloading curve.
         stiffness_fit = Array{Float64}(undef,1)    
         tempLen = minimum([hyperParameters.unloadingFitRange, length(xy_unld5[:,1])])
 
         dispVals = xy_unld5[1:tempLen ,1]
         forceVals = xy_unld5[1:tempLen,2]
-        Fmax = xy_unld5[1,2]               # Maximum force during unloading
+        Fmax = xy_unld5[1,2] 
+        # Maximum force during unloading
 
         if cmp(hyperParameters.unloadingFitFunction,"Oliver-Pharr") == 0
             Dmax = xy_unld5[1,1]               
@@ -241,7 +232,8 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
                 sqrt( sum( (unloadFitFun(fitCoefs) ./ forceVals).^2 ) )
             end
 
-            lx = [0.0, 0.0 , 0.0]; ux = [Inf, minimum(dispVals)-1e-2 , Inf];
+            lx = [0.0, 0.0 , 0.0];
+            ux = [Inf, minimum(dispVals)-1e-2 , Inf];
             dfc = TwiceDifferentiableConstraints(lx, ux)
             resultFit = optimize(unloadFitMinFun, dfc, [1.0, 1.0, 1.0], IPNewton())
             uld_p = resultFit.minimizer
@@ -249,7 +241,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
             if ctrl.plotMode #&& uld_p[1] > 0.0 && uld_p[2] > 0.0
                 plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
-                plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit \$F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} \$", legend = :topleft)
+                plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit  F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} ", legend = :topleft)
                 plot!(size=(500,500))
                 println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
                 savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")

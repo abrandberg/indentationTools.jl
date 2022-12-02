@@ -425,14 +425,13 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
         resultFit = optimize(unloadFitMinFun, dfc, [1.0, 1.0, 1.0], IPNewton())
         uld_p = resultFit.minimizer
         println(uld_p)
-        stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1)
+        stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1.0)
     
         if ctrl.plotMode
-            plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
-            plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit")
-            println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
-            plot!(size=(500,500))
-            savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            plot(xlabel = "Indentation [nm]", ylabel = "Force [uN]", size = (500 , 500) , dpi = 600, legend = :topleft)
+            plot!(dispVals, forceVals, label = "Signal")
+            plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit")# P(h) = $(round(uld_p[1],digits=2)(h - $(round(uld_p[2], digits = 2)) )^{$(round(uld_p[3],digits = 2))} )")
+            savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
         end
 
     elseif cmp(hyperParameters.unloadingFitFunction, "AP-OP") == 0
@@ -453,7 +452,7 @@ function extractSingleComplianceExperiment(indentationSet::metaInfoExperimentalS
 
         if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
             plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
-            plot!(dispVals, unloadFitFunAP(uld_p).+forceVals , label = "Fit \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
+            plot!(dispVals, unloadFitFunAP(uld_p).+forceVals , label = "Fit")# \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
             plot!(size=(500,500))
             println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
             savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
