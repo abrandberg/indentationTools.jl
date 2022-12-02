@@ -17,7 +17,7 @@ end
     @test  begin # "Read back written data: small array"
         filename = "Test1.ibw"
         inputData = Float32.(rand(100,3))
-        writeIBW(filename,inputData)
+        writeIBW(filename,inputData) 
         all(reshape(inputData, : , 1) .== readIBW(filename))
     end
     rm("Test1.ibw")

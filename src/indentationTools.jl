@@ -63,10 +63,11 @@ controls what outputs are generated when code from the package indentationTools 
 
 - plotMode    - If true, generate and save plots during the processing of files.
 - verboseMode - If true, report back information to the terminal.
+- writeToFile - If true, write CSV file with all the results to the targetDir.
 
 Example:
 ```
-control(true, false)        # Generate plots, but no verbose output.
+control(true, false,true)        # Generate plots, but no verbose output. Save outputs to .csv file
 ```
 """
 struct control
@@ -75,6 +76,32 @@ struct control
     writeToFile             ::Bool           # Whether to save results as CSV files.
 end
 
+
+"""
+metaInfoExperimentalSeries(designatedName::String,relativeHumidity::Float64,indenterType::String,
+                           indentationNormal::String,springConstant::Float64,areaFile::String,
+                           targetDir::String,thermalHoldTime::Int64,indentationDataType::String) 
+
+contains descriptive and input data for the indentationTools core routines. 
+
+- designatedName    - Name of the experimental series.
+- relativeHumidity  - Relative humidity during the experiment. Not used in calculations.
+- indenterType      - If "pyramid", applies a correction factor (multiplies ER by 1/1.05).
+- indentationNormal - Direction of indentation relative to material axes. Not used in calculations.
+- springConstant    - Spring constant of the indenter [N/m].
+- areaFile          - Path to the file with area data. Can also be set to "vickers" or "berkovich"
+                      to use the ideal area curve.
+- targetDir         - Directory to the force-displacement files to import. Can be .IBW if 
+                      "indentationDataType" is set to "afm".
+- thermalHoldTime   - Number of data points expected to be inside the thermal hold.
+- indentationDataType - "afm" for AFM-NI with .IBW files. "ni" for force-displacement data.
+
+Example:
+```
+metaInfoExperimentalSeries("testOne", 50.0, "hemisphere", "L", 100.21, areaFile.txt, targetDir\\, 
+                            50000, "afm")
+```
+"""
 struct metaInfoExperimentalSeries
     designatedName          ::String         # Designated name
     relativeHumidity        ::Float64        # Relative humidity
@@ -97,14 +124,11 @@ include("preprocessingFunctions.jl")
 ## Main functions
 function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
 
-
     if cmp(lowercase(indentationSet.indentationDataType), "afm") == 0
         xy = IBWtoTXT(indentationSet.targetDir*resultFile)
         # Import signal
-
         xy .*= 1e9     
         # Convert to nano-meters
-
         ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
 
         xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
@@ -119,7 +143,6 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     elseif cmp( lowercase( indentationSet.indentationDataType), "ni") == 0
         xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
         # Import data
-        
         xy[:,2] *= 1.0e6
         # Convert force to nano-Newtons
         
@@ -141,7 +164,6 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         throw(DomainError( string(hyperParameters.controlLoop), "controlLoop setting not defined."))
     end
     
-    
     # Split into loading and unloading.
     xy_unld1 = xy[holdStartIdx:end,:]
 
@@ -159,11 +181,16 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     xy_unld = xy_unld1[unloadStartIdx:end,:]
 
     if ctrl.plotMode
-        plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "Indentation [nm]", ylab = "Force [uN]", label = "Signal")
-        plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], seriestype = :scatter, lab = "Start of hold")
-        plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], seriestype = :scatter, lab = "Start of unload", legend = :topleft)
-        plot!(size=(500,500))
-        savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
+        plot(xlabel = "Indentation [nm]" , ylabel = "Force [uN]", size = (500 , 500) , dpi = 400, legend = :topleft)
+        plot!(xy[:,1], xy[:,2], label = "Signal")
+        scatter!([xy[holdStartIdx,1]] , [xy[holdStartIdx,2]], label = "Start of hold")
+        scatter!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], label = "Start of unload")
+        savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
+        #plotd = plot(xy[:,1], xy[:,2], xlims = (0.0, maximum(xy[:,1])), xlab = "", ylab = "", label = "Signal")
+        #plot!([xy[holdStartIdx,1]], [xy[holdStartIdx,2]], seriestype = :scatter, lab = "Start of hold")
+        #plot!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], seriestype = :scatter, lab = "Start of unload", legend = :topleft)
+        #plot!(size=(500,500))
+        #savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
     end
 
 

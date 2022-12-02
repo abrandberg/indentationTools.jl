@@ -42,7 +42,7 @@ function readIBW(filename::String)
     ignore          = read(A, Int32)
     CreationDate    = read(A, UInt32)
     modData         = read(A, UInt32)
-    npnts           = read(A, Int32)                  # WORKS!
+    npnts           = read(A, Int32)
     
     type = read(A, Int16)
     if type == 2
@@ -191,7 +191,6 @@ function findStartOfHold(xy::Matrix{Float32}, directionOfSearch::String)
     # 4. Determine the mean value of all values larger than this bin value.
     # 5. Find the first time the vector exceeds this value.
     # 6. This is taken as the first value in the hold sequence.
-
     sensorRange = ( maximum(xy[:,2]) - minimum(xy[:,2]) ) .*10e3./maximum(xy[:,2])
     vecLengthTemp = Int64(round(4.0*sensorRange))
     edgesOfHist = range(minimum(xy[:,2]), maximum(xy[:,2]), length = vecLengthTemp)
@@ -324,7 +323,6 @@ function calculateMachineCompliance(indentationSet::metaInfoExperimentalSeries,h
             currentCompliance = NaN
             currentArea = NaN
         end
-        
     end
 
     collectAreas = Float32.(collectAreas)
@@ -513,7 +511,6 @@ function areaCheck(indentationSet , ctrl)
   
     tempVec = area_xy[:,1]
     p_area = [tempVec.^2 tempVec tempVec.^0.5 tempVec.^0.25 tempVec.^0.125] \ area_xy[:,2]
-
 
     area_coneIndenter(indentationDepth) = 24.5.*indentationDepth.^2.0
     area_halfSphere(indentationDepth) = π.*(2.0.*indentationDepth.*300.0 .- indentationDepth.^2.0)
