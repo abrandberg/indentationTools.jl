@@ -436,4 +436,5 @@ end
     # Control
     export calculateMachineCompliance
     export areaCheck
+    export plotVersusTime
 end
