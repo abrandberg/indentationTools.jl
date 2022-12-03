@@ -232,8 +232,8 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
                 sqrt( sum( (unloadFitFun(fitCoefs) ./ forceVals).^2 ) )
             end
 
-            lx = [0.0, 0.0 , 0.0];
-            ux = [Inf, minimum(dispVals)-1e-2 , Inf];
+            lx = [0.0, 0.0 , 0.0]
+            ux = [Inf, minimum(dispVals)-1e-2 , Inf]
             dfc = TwiceDifferentiableConstraints(lx, ux)
             resultFit = optimize(unloadFitMinFun, dfc, [1.0, 1.0, 1.0], IPNewton())
             uld_p = resultFit.minimizer
@@ -243,7 +243,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
                 plot(xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , size = (500,500), dpi = 600 , legend = :topleft)
                 plot!(dispVals, forceVals,  label = "Signal")
                 plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit  \$F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} \$")
-                savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+                savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
             end
 
         elseif cmp(hyperParameters.unloadingFitFunction, "AP-OP") == 0
