@@ -528,6 +528,6 @@ end
 
 function plotVersusTime(xy, sampleRate, saveName)
     plot(xlabel = "Time [s]", ylabel = "Force [nN]", size = (500,500) , dpi = 600)
-    plot!(collect(0:length(xy[:,2]))./sampleRate , xy[:,2] , label = "Force signal")
+    plot!(collect(0:length(xy[:,2]-1))./sampleRate , xy[:,2] , label = "Force signal")
     savefig("$(saveName).png")
 end
