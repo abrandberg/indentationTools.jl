@@ -516,11 +516,18 @@ function areaCheck(indentationSet , ctrl)
     area_halfSphere2(indentationDepth) = π.*(300.0 .*indentationDepth)
 
     if ctrl.plotMode
-        areaFun = plot(area_xy[:,1] , area_xy[:,2], xlabel = "\$z\$ [nm]", ylabel = "Area \$A(z)\$ [nm]^2", label = split(indentationSet.areaFile, '/')[end])
+        plot(xlabel = "\$z\$ [nm]", ylabel = "Area \$A(z)\$ [nm]^2", size = (500,500), dpi = 600)
+        plot!(area_xy[:,1] , area_xy[:,2], label = split(indentationSet.areaFile, '/')[end])
         plot!(area_xy[:,1] , area_coneIndenter(area_xy[:,1]), label = "Vickers/Berkovich")
         plot!(area_xy[:,1] , area_halfSphere(area_xy[:,1]), label = "Halfsphere, R = 300 nm", legend = :bottomright)
         plot!(area_xy[:,1] , area_halfSphere2(area_xy[:,1]), label = "Halfsphere contact, R = 300 nm", legend = :bottomright)
         ylims!(0.0 , maximum(area_xy[:,2]))
-        savefig(areaFun,"$(indentationSet.areaFile[1:end-4]).png")
+        savefig("$(indentationSet.areaFile[1:end-4]).png")
     end
+end
+
+function plotVersusTime(xy, sampleRate, saveName)
+    plot(xlabel = "Time [s]", ylabel = "Force [nN]", size = (500,500) , dpi = 600)
+    plot!([0:length[xy[:,2]]./sampleRate , xy[:,2] , label = "Force signal"])
+    savefig("$(saveName).png")
 end

@@ -155,6 +155,9 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
     end
 
+
+    ctrl.plotMode && plotVersusTime(xy,hyperParameters.sampleRate,"$(indentationSet.targetDir)$(resultFile[1:end-4])_ForcevsTime.png")
+
     # Determine the start of the hold time at circa max force.
     if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
         holdStartIdx = findStartOfHold(xy,"first")
@@ -181,7 +184,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     xy_unld = xy_unld1[unloadStartIdx:end,:]
 
     if ctrl.plotMode
-        plot(xlabel = "Indentation [nm]" , ylabel = "Force [uN]", size = (500 , 500) , dpi = 400, legend = :topleft)
+        plot(xlabel = "Indentation [nm]" , ylabel = "Force [nN]", size = (500 , 500) , dpi = 400, legend = :topleft)
         plot!(xy[:,1], xy[:,2], label = "Signal")
         scatter!([xy[holdStartIdx,1]] , [xy[holdStartIdx,2]], label = "Start of hold")
         scatter!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], label = "Start of unload")
@@ -226,10 +229,10 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Maximum indentation depth during unloading
             
             function unloadFitFun(fitCoefs)
-                return fitCoefs[1].*(dispVals .- fitCoefs[2]).^fitCoefs[3] .- forceVals
+                return fitCoefs[1].*(dispVals .- fitCoefs[2]).^fitCoefs[3] 
             end
             function unloadFitMinFun(fitCoefs)
-                sqrt( sum( (unloadFitFun(fitCoefs) ./ forceVals).^2 ) )
+                sqrt( sum( ((unloadFitFun(fitCoefs).- forceVals) ./ forceVals).^2 ) )
             end
 
             lx = [0.0, 0.0 , 0.0]
@@ -240,9 +243,9 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1.0)
 
             if ctrl.plotMode
-                plot(xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , size = (500,500), dpi = 600 , legend = :topleft)
+                plot(xlabel = "Indentation [nm]" , ylabel = "Force [nN]" , size = (500,500), dpi = 600 , legend = :topleft)
                 plot!(dispVals, forceVals,  label = "Signal")
-                plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit  \$F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} \$")
+                plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit \$F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} \$")
                 savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
             end
 
@@ -251,21 +254,21 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Maximum indentation depth during unloading
             
             function unloadFitFunAP(fitCoefs)
-                return Fmax.*((dispVals .- fitCoefs[1])./(Dmax .- fitCoefs[1]) ).^( fitCoefs[2] ) .- forceVals
+                return Fmax.*((dispVals .- fitCoefs[1])./(Dmax .- fitCoefs[1]) ).^( fitCoefs[2] ) 
             end
             function unloadFitMinFunAP(fitCoefs)
-                sqrt( sum( (unloadFitFunAP(fitCoefs) ./ forceVals).^2.0 ) )
+                sqrt( sum( (( unloadFitFunAP(fitCoefs) .- forceVals ) ./ forceVals).^2.0 ) )
             end
 
             ctrl.plotMode && display(plot(dispVals, forceVals, label = :none))
 
             resultFit = optimize(unloadFitMinFunAP, [ Dmax.*0.5 , 2.0], NewtonTrustRegion())
             uld_p = Optim.minimizer(resultFit)
-            stiffness_fit = Fmax.*uld_p[2].*(Dmax .- uld_p[1]).^(-1.0)
+            stiffness_fit = Fmax*uld_p[2].*(Dmax - uld_p[1])^-1.0
 
 
             if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
-                plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
+                plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [nN]" , label = "Signal")
                 plot!(dispVals, unloadFitFunAP(uld_p).+forceVals , label = "Fit \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
                 plot!(size=(500,500))
                 println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
@@ -275,8 +278,8 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
         elseif cmp(lowercase(hyperParameters.unloadingFitFunction), "feng") == 0
             
-            unloadFitFun2(fitCoefs) = fitCoefs[1] .+ fitCoefs[2].*forceVals.^0.5 + fitCoefs[3].*forceVals.^fitCoefs[4] .- dispVals
-            unloadFitMinFun2(fitCoefs) = sqrt(sum( (unloadFitFun2(fitCoefs) ./ dispVals).^2) )
+            unloadFitFun2(fitCoefs) = fitCoefs[1] .+ fitCoefs[2].*forceVals.^0.5 + fitCoefs[3].*forceVals.^fitCoefs[4] 
+            unloadFitMinFun2(fitCoefs) = sqrt(sum( ((unloadFitFun2(fitCoefs).- dispVals) ./ dispVals).^2) )
             resultFit = optimize(unloadFitMinFun2, [1.0 1.0 1.0 1.0], BFGS())
             uld_p = resultFit.minimizer
             stiffness_fit = inv(( 0.5*uld_p[2].*Fmax.^-0.5 + uld_p[4]*uld_p[3].*Fmax.^(uld_p[4] - 1.0) ))
@@ -317,10 +320,9 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             # Needs radius of the indenter to work!
 
             areaSphere(indentationDepth) = π.*(2.0.*indentationDepth.*300.0 .- indentationDepth.^2.0)
-            # # Define function
-            #println(areaSphere)
+            # Define function
             unloadArea = areaSphere(x0)
-            # # Extract value
+            # Extract value
 
         else
             area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')

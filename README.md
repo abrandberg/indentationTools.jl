@@ -20,7 +20,7 @@ The classical method from reference [1] below. Assumes that the unloading curve 
 
 $$P(h) = B(h-h_f)^m $$
 
-where $B$, $h_f$ and $m$ are fitting parameters. The initial unloading slope $S$ is found by differentiating this expression, 
+where $B$, $h_f$ and $m$ are fitting parameters. The initial unloading slope $S$ is found by differentiating this expression and evaluating it at the onset of unloading, 
 
 $$ S = mB(h_{\textrm{max}}-h_f)^{m-1}$$
 
