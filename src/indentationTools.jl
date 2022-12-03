@@ -268,11 +268,11 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
 
 
             if ctrl.plotMode && uld_p[1] > 0.0 && uld_p[2] > 0.0
-                plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [nN]" , label = "Signal")
+                plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [nN]" , label = "Signal")
                 plot!(dispVals, unloadFitFunAP(uld_p) , label = "Fit \$F(z)=F_{max}((z - $(round(uld_p[1],digits = 1)))/(D_{max} - $(round(uld_p[1],digits = 1))) )^{$(round(uld_p[2],digits = 1))} \$", legend = :topleft)
                 plot!(size=(500,500))
-                println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
-                savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+                #println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+                savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
             end
 
 
@@ -405,6 +405,15 @@ function determineAdhesionForce(indentationSet::metaInfoExperimentalSeries,hyper
     end
 
     F_ad = minimum(xy[:,2])
+    println(F_ad)
+    positionInSignal = argmin(xy[:,2])
+
+    if ctrl.plotMode
+        plot(xlabel = "Indentation [nm]" , ylabel = "Force [nN]" , size = (500 , 500) , dpi = 600)
+        plot!( xy[:,1], xy[:,2], label = "Signal")
+        scatter!([xy[positionInSignal,1]] , [xy[positionInSignal,2]] , label = "\$ F_{min} \$")
+    end
+
 
     return F_ad
 

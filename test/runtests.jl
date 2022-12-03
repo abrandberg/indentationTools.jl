@@ -7,7 +7,7 @@ include("testFunctions.jl")
 #importNI_forceDisplacementData("test/testData/anonNI.TXT")
 @testset "importNI_forceDisplacementData " begin
     @test begin
-        2000 == length(importNI_forceDisplacementData("test/testData/anonNI.TXT"))
+        2000 == length(importNI_forceDisplacementData("$(pwd())/test/testData/anonNI.TXT"))
     end
 end
 
@@ -42,42 +42,42 @@ end
     ### because the real .IBW file format is "black-box" to me.
     @test begin
         # Regression test 1
-        inputVec = readIBW("test/testData/anonMG.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonMG.ibw")
         length(inputVec) == 254541
     end
     @test begin
         # Regression test 2
-        inputVec = readIBW("test/testData/anonMG.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonMG.ibw")
         inputVec[12345] == -3.404614f-6
     end
     @test begin
         # Regression test 3
-        inputVec = readIBW("test/testData/anonZF.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonZF.ibw")
         length(inputVec) == 254466
     end
     @test begin
         # Regression test 4
-        inputVec = readIBW("test/testData/anonZF.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonZF.ibw")
         inputVec[end] == -2.6649975f-6
     end
     @test begin
         # Regression test 5
-        inputVec = readIBW("test/testData/anonPMMA.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonPMMA.ibw")
         length(inputVec) == 254961
     end
     @test begin
         # Regression test 6
-        inputVec = readIBW("test/testData/anonPMMA.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonPMMA.ibw")
         inputVec[1] == -2.3641041f-6
     end
     @test begin
         # Regression test 7
-        inputVec = readIBW("test/testData/anonCell.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonCell.ibw")
         length(inputVec) == 4299111
     end
     @test begin
         # Regression test 8
-        inputVec = readIBW("test/testData/anonCell.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonCell.ibw")
         inputVec[1337] == 1.5439662f-7
     end
 end
@@ -312,8 +312,8 @@ end
                                         "hemisphere",
                                         "X",
                                         217.51, 
-                                        "test/testData/sampleAreaFunction.txt",
-                                        "test/testData/",
+                                        "$(pwd())/test/testData/sampleAreaFunction.txt",
+                                        "$(pwd())/test/testData/",
                                         50000, 
                                         "afm")
 
@@ -349,7 +349,7 @@ end
                                         "X",
                                         217.51, 
                                         "vickers",
-                                        "test/testData/",
+                                        "$(pwd())/test/testData/",
                                         0, 
                                         "ni")
      @test begin
@@ -380,4 +380,22 @@ end
 end
 
 
+@testset "determineAdhesionForce               " begin
+    ctrl = control(true, false, false)
+    hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 2.0 , "force")
+    indentSet = metaInfoExperimentalSeries("Test2", 
+                                            50.0,
+                                        "hemisphere",
+                                        "X",
+                                        217.51, 
+                                        "$(pwd())/test/testData/sampleAreaFunction.txt",
+                                        "$(pwd())/test/testData/",
+                                        50000, 
+                                        "afm")
+    @test begin
+        F_ad = determineAdhesionForce(indentSet, hp, ctrl, "anonMG.ibw")
+        isapprox( -125.92491, F_ad, rtol = 1.02)
+    end
 
+
+end
