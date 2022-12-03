@@ -10,6 +10,7 @@ The effect of a non-rigid indenter can be accounted for by defining a measured m
 $$\frac{1}{E_r} = \frac{1-\nu^2}{E} + \frac{1-\nu_i^2}{E_i}$$
 
 where $E$ and $\nu$ are the properties of the tested material and $E_i$, $\nu_i$ are the properties of the indenter. The key underpinning of all the equations in the package is that the measured modulus $E_r$ is related to the unloading stiffness $S$ and the projected area of elastic contact $A$ by the equation
+
 $$ S = \frac{dP}{dh} = \frac{2}{\sqrt{\pi}} E_r \sqrt{A}$$
 
 ## Unloading curve fitting equations
@@ -21,7 +22,7 @@ $$P(h) = B(h-h_f)^m $$
 
 where $B$, $h_f$ and $m$ are fitting parameters. The initial unloading slope $S$ is found by differentiating this expression, 
 
-$$ S = \left. \frac{dP}{dh} \right|_{h=h_{\textrm{max}}} = mB(h_{\textrm{max}}-h_f)^{m-1}$$
+$$ S = mB(h_{\textrm{max}}-h_f)^{m-1}$$
 
 Note that the value of $m$ predicted by theory is 1 / 1.5 / 2.0 for a flat/paraboloid/conical indenter, respectively (p. 1575, [1]).
 

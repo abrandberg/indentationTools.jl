@@ -239,11 +239,10 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
             uld_p = resultFit.minimizer
             stiffness_fit = uld_p[1]*uld_p[3]*(Dmax - uld_p[2]).^(uld_p[3] - 1.0)
 
-            if ctrl.plotMode #&& uld_p[1] > 0.0 && uld_p[2] > 0.0
-                plotd = plot(dispVals, forceVals, xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , label = "Signal")
-                plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit  F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} ", legend = :topleft)
-                plot!(size=(500,500))
-                println("$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
+            if ctrl.plotMode
+                plot(xlabel = "Indentation [nm]" , ylabel = "Force [uN]" , size = (500,500), dpi = 600 , legend = :topleft)
+                plot!(dispVals, forceVals,  label = "Signal")
+                plot!(dispVals, unloadFitFun(uld_p).+forceVals , label = "Fit  \$F(z)= $(round(uld_p[1],digits = 1))(z - $(round(uld_p[2],digits = 1)))^{$(round(uld_p[3],digits = 1))} \$")
                 savefig(plotd,"$(indentationSet.targetDir)$(resultFile[1:end-4])_unloadFit.png")
             end
 
