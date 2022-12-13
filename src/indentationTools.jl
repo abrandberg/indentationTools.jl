@@ -153,6 +153,21 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         # Software handles rampStart, so set to 1.
 
         ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
+
+    elseif cmp( lowercase( indentationSet.indentationDataType), "ni_v2") == 0
+        xy = importNI_forceDisplacementData_v2(indentationSet.targetDir*resultFile)   
+        # Import data
+        xy[:,2] *= 1.0e3
+        # Convert force to nano-Newtons
+        
+        xy = Float32.(xy)
+        # Convert to Float32
+        
+        rampStartIdx = 1
+        # Software handles rampStart, so set to 1.
+
+        ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
+
     end
 
 

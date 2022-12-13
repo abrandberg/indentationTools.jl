@@ -503,6 +503,12 @@ function importNI_forceDisplacementData(filename::String)
 
     return dx[:,2:3]
 end
+function importNI_forceDisplacementData_v2(filename::String)   
+    df = CSV.File(filename, decimal = '.', skipto = 7, delim = "\t", header = ["Depth_nm", "Load_uN", "Time_s","Depth_V","Load_V"]) |> DataFrame
+    dx = Matrix(df)
+
+    return dx[:,1:2]
+end
 
 function areaCheck(indentationSet , ctrl)
     area_xy = readdlm(indentationSet.areaFile, ' ', Float64, '\n')
