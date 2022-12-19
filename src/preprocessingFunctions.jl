@@ -130,11 +130,11 @@ function IBWtoTXT(filename::String)
 end
 
 
-function offsetAndDriftCompensation(xy::Matrix{Float32})
-    endRangeBaseFit = 25;
-    breakForContact = true;
-    aLoop = 0;
-    basefit = 0;
+function offsetAndDriftCompensation(xy::Matrix{Float32}, endRangeBaseFit=25, noiseMultiplier=4.0)
+    #endRangeBaseFit = 25
+    breakForContact = true
+    aLoop = 0
+    basefit = 0
 
     while breakForContact
         aLoop += 1
@@ -158,7 +158,7 @@ function offsetAndDriftCompensation(xy::Matrix{Float32})
 
     # Locate the point where the ramp begins.
     noise = max(0.1, std(xy[10:basefit,2]) );
-    rampStartIdx = max(1, findfirst(x -> x > 4.0*noise, xy[:,2]) - 1);
+    rampStartIdx = max(1, findfirst(x -> x > noiseMultiplier*noise, xy[:,2]) - 1);
     xZero = xy[rampStartIdx,1];
     xy[:,1] .-= xZero;                                       # Shift the curve by the value at the start of the ramp.
     xy[:,2] .-= xy[rampStartIdx,2];

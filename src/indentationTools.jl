@@ -166,8 +166,6 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
         # Find initial contact
         
-        #rampStartIdx = 1
-        # Software handles rampStart, so set to 1.
 
         ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
 
