@@ -202,6 +202,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
     if ctrl.plotMode
         plot(xlabel = "Indentation [nm]" , ylabel = "Force [nN]", size = (500 , 500) , dpi = 400, legend = :topleft)
         plot!(xy[:,1], xy[:,2], label = "Signal")
+        scatter!([xy[rampStartIdx,1]] , [xy[rampStartIdx,2]], label = "Start of ramp")
         scatter!([xy[holdStartIdx,1]] , [xy[holdStartIdx,2]], label = "Start of hold")
         scatter!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], label = "Start of unload")
         savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
