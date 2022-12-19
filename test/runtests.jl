@@ -4,10 +4,10 @@ using Test
 
 include("testFunctions.jl")
 
-#importNI_forceDisplacementData("test/testData/anonNI.TXT")
+#importNI_forceDisplacementData("test/test/testData/anonNI.TXT")
 @testset "importNI_forceDisplacementData " begin
     @test begin
-        2000 == length(importNI_forceDisplacementData("$(pwd())/testData/anonNI.TXT"))
+        2000 == length(importNI_forceDisplacementData("$(pwd())/test/testData/anonNI.TXT"))
     end
 end
 
@@ -42,42 +42,42 @@ end
     ### because the real .IBW file format is "black-box" to me.
     @test begin
         # Regression test 1
-        inputVec = readIBW("$(pwd())/testData/anonMG.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonMG.ibw")
         length(inputVec) == 254541
     end
     @test begin
         # Regression test 2
-        inputVec = readIBW("$(pwd())/testData/anonMG.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonMG.ibw")
         inputVec[12345] == -3.404614f-6
     end
     @test begin
         # Regression test 3
-        inputVec = readIBW("$(pwd())/testData/anonZF.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonZF.ibw")
         length(inputVec) == 254466
     end
     @test begin
         # Regression test 4
-        inputVec = readIBW("$(pwd())/testData/anonZF.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonZF.ibw")
         inputVec[end] == -2.6649975f-6
     end
     @test begin
         # Regression test 5
-        inputVec = readIBW("$(pwd())/testData/anonPMMA.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonPMMA.ibw")
         length(inputVec) == 254961
     end
     @test begin
         # Regression test 6
-        inputVec = readIBW("$(pwd())/testData/anonPMMA.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonPMMA.ibw")
         inputVec[1] == -2.3641041f-6
     end
     @test begin
         # Regression test 7
-        inputVec = readIBW("$(pwd())/testData/anonCell.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonCell.ibw")
         length(inputVec) == 4299111
     end
     @test begin
         # Regression test 8
-        inputVec = readIBW("$(pwd())/testData/anonCell.ibw")
+        inputVec = readIBW("$(pwd())/test/testData/anonCell.ibw")
         inputVec[1337] == 1.5439662f-7
     end
 end
@@ -312,8 +312,8 @@ end
                                         "hemisphere",
                                         "X",
                                         217.51, 
-                                        "$(pwd())/testData/sampleAreaFunction.txt",
-                                        "$(pwd())/testData/",
+                                        "$(pwd())/test/testData/sampleAreaFunction.txt",
+                                        "$(pwd())/test/testData/",
                                         50000, 
                                         "afm")
 
@@ -349,7 +349,7 @@ end
                                         "X",
                                         217.51, 
                                         "vickers",
-                                        "$(pwd())/testData/",
+                                        "$(pwd())/test/testData/",
                                         0, 
                                         "ni")
      @test begin
@@ -362,25 +362,25 @@ end
         hp =  hyperParameters( 10, 200, "AP-OP", false, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
-        isapprox( 2.9104987116718184, Er, rtol = 1.15)
+        isapprox( 2.91049, Er, rtol = 1.15)
      end
      @test begin
         hp =  hyperParameters( 10, 200, "Feng", false, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
-        isapprox( 2.8041684985519852, Er, rtol = 1.15)
+        isapprox( 2.80416, Er, rtol = 1.15)
     end
     @test begin
         hp =  hyperParameters( 10, 200, "Feng", true, 0, 0, 0.0, 2.0 , "force")
         Er , ~ , ~ , ~ , ~ , ~  = modulusfitter( indentSet, hp, ctrl, "anonNI.TXT")
         #println("Er is $Er GPa")
-        isapprox( 2.5278698699501563 , Er, rtol = 1.15)
+        isapprox( 2.52786 , Er, rtol = 1.15)
 
     end
 end
 
 
-@testset "determineAdhesionForce               " begin
+@testset "determineAdhesionForce         " begin
     ctrl = control(true, false, false)
     hp =  hyperParameters( 2000, 1400, "Oliver-Pharr", false, 0, 0, 0.0 , 2.0 , "force")
     indentSet = metaInfoExperimentalSeries("Test2", 
@@ -388,8 +388,8 @@ end
                                         "hemisphere",
                                         "X",
                                         217.51, 
-                                        "$(pwd())/testData/sampleAreaFunction.txt",
-                                        "$(pwd())/testData/",
+                                        "$(pwd())/test/testData/sampleAreaFunction.txt",
+                                        "$(pwd())/test/testData/",
                                         50000, 
                                         "afm")
     @test begin
