@@ -443,6 +443,7 @@ end
     export readIBW
     export IBWtoTXT
     export importNI_forceDisplacementData
+    export importNI_forceDisplacementData_v2
     export subdirImport
 
     # Preprocessing of signal
