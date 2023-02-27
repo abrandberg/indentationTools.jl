@@ -537,3 +537,57 @@ function plotVersusTime(xy, sampleRate, saveName)
     plot!( (collect(1:length(xy[:,2])).-1)./sampleRate , xy[:,2] , label = "Force signal")
     savefig("$(saveName).png")
 end
+
+
+
+function signalImporter( indentationSet, ctrl, resultFile, hyperParameters)
+    if cmp(lowercase(indentationSet.indentationDataType), "afm") == 0
+        xy = IBWtoTXT(indentationSet.targetDir*resultFile)
+        # Import signal
+        xy .*= 1e9     
+        # Convert to nano-meters
+        ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
+
+        xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
+        # Find initial contact
+        ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
+
+        xy[:,1] .-= xy[:,2]
+        xy[:,2] .*= indentationSet.springConstant
+        xy[:,1] .-= hyperParameters.machineCompliance.*xy[:,2];
+        # Convert displacement-deflection matrix to indentation-force matrix
+
+    elseif cmp( lowercase( indentationSet.indentationDataType), "ni") == 0
+        xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
+        # Import data
+        xy[:,2] *= 1.0e6
+        # Convert force to nano-Newtons
+        
+        xy = Float32.(xy)
+        # Convert to Float32
+        
+        rampStartIdx = 1
+        # Software handles rampStart, so set to 1.
+
+        ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
+
+    elseif cmp( lowercase( indentationSet.indentationDataType), "ni_v2") == 0
+        xy = importNI_forceDisplacementData_v2(indentationSet.targetDir*resultFile)   
+        # Import data
+        xy[:,2] *= 1.0e3
+        # Convert force to nano-Newtons
+        
+        xy = Float32.(xy)
+        # Convert to Float32
+
+        xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
+        # Find initial contact
+        
+        ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
+
+    else 
+        
+    end
+    return xy , rampStartIdx
+
+end

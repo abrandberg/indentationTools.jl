@@ -124,53 +124,8 @@ include("preprocessingFunctions.jl")
 ## Main functions
 function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameters,ctrl::control,resultFile::String)
 
-    if cmp(lowercase(indentationSet.indentationDataType), "afm") == 0
-        xy = IBWtoTXT(indentationSet.targetDir*resultFile)
-        # Import signal
-        xy .*= 1e9     
-        # Convert to nano-meters
-        ctrl.plotMode && display(plot([xy[1:100:end,1]],[xy[1:100:end,2]]))
-
-        xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
-        # Find initial contact
-        ctrl.plotMode && display(plot!(xy[1:100:end,1],xy[1:100:end,2]))
-
-        xy[:,1] .-= xy[:,2]
-        xy[:,2] .*= indentationSet.springConstant
-        xy[:,1] .-= hyperParameters.machineCompliance.*xy[:,2];
-        # Convert displacement-deflection matrix to indentation-force matrix
-
-    elseif cmp( lowercase( indentationSet.indentationDataType), "ni") == 0
-        xy = importNI_forceDisplacementData(indentationSet.targetDir*resultFile)   
-        # Import data
-        xy[:,2] *= 1.0e6
-        # Convert force to nano-Newtons
-        
-        xy = Float32.(xy)
-        # Convert to Float32
-        
-        rampStartIdx = 1
-        # Software handles rampStart, so set to 1.
-
-        ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
-
-    elseif cmp( lowercase( indentationSet.indentationDataType), "ni_v2") == 0
-        xy = importNI_forceDisplacementData_v2(indentationSet.targetDir*resultFile)   
-        # Import data
-        xy[:,2] *= 1.0e3
-        # Convert force to nano-Newtons
-        
-        xy = Float32.(xy)
-        # Convert to Float32
-
-        xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
-        # Find initial contact
-        
-
-        ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
-
-    end
-
+    # Import the signal file. 
+    xy , rampStartIdx = signalImporter(indentationSet, ctrl, resultFile, hyperParameters)
 
     ctrl.plotMode && plotVersusTime(xy,hyperParameters.sampleRate,"$(indentationSet.targetDir)$(resultFile[1:end-4])_ForcevsTime.png")
 
@@ -422,7 +377,7 @@ function determineAdhesionForce(indentationSet::metaInfoExperimentalSeries,hyper
     end
 
     F_ad = minimum(xy[:,2])
-    println(F_ad)
+    #println(F_ad)
     positionInSignal = argmin(xy[:,2])
 
     if ctrl.plotMode
@@ -431,9 +386,7 @@ function determineAdhesionForce(indentationSet::metaInfoExperimentalSeries,hyper
         scatter!([xy[positionInSignal,1]] , [xy[positionInSignal,2]] , label = "\$ F_{min} \$")
     end
 
-
     return F_ad
-
 end
 
 
@@ -446,6 +399,7 @@ end
     export importNI_forceDisplacementData
     export importNI_forceDisplacementData_v2
     export subdirImport
+    export signalImporter
 
     # Preprocessing of signal
     export offsetAndDriftCompensation

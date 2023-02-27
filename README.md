@@ -52,3 +52,47 @@ The basics of indentation testing is the theory of Hertzian contact. Beyond a ge
     [6] Cheng, Y. T., & Cheng, C. M. (2005). 
     Relationships between initial unloading slope, contact depth, and mechanical properties for spherical indentation in linear viscoelastic solids. 
     Materials Science and Engineering A, 409(1–2), 93–99. [https://doi.org/10.1016/j.msea.2005.05.118](https://doi.org/10.1016/j.msea.2005.05.118) 
+
+## Understanding the code structure
+The code can be divided into X steps:
+
+### 1. Data import
+The data import is done by reading the file that was exported from the AFM machine. Helper functions are provided for certain file formats we worked with in the past, such as .IBW files. 
+
+The general sequence of events is as in the snippet below where a CSV file containing 5 columns of numerical data and 6 rows of headers is imported. Note that it is assumed that $xy$ always contains the indentation depth in column 1 and the indentation force in column 2. 
+
+Although the units are arbitrary as long as they are consistent, we found it convenient to work with nano-meters, nano-Newtons and nano-meters squared. 
+
+***Note that in the example below, the variable "filename" is supplied by you and is the path to the file with data exported from the AFM machine.***
+
+```julia
+# Dependencies (only necessary if writing your own importer)
+using CSV   
+using Plots
+using DataFrames
+
+# Read file (check CSV documentation for the different keywords)
+df = CSV.File(filename, decimal = '.', skipto = 7, delim = "\t", header = ["Depth_nm", "Load_uN", "Time_s","Depth_V","Load_V"]) |> DataFrame
+
+# Throw away columns that are not needed
+df = deepcopy(df[:,1:2])
+
+# Convert the dataframe to a matrix (df should contain only numeric data)
+dx = Matrix(df)
+
+# Convert force to nano-Newtons
+xy[:,2] *= 1.0e3
+
+# Convert to Float32
+xy = Float32.(xy)
+
+# Find initial contact
+xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
+
+# Plot
+ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
+```
+
+
+2. Data preprocessing.
+3. Fitting of the slope
