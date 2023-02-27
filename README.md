@@ -85,14 +85,35 @@ xy[:,2] *= 1.0e3
 
 # Convert to Float32
 xy = Float32.(xy)
-
-# Find initial contact
-xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
-
-# Plot
-ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
 ```
 
 
-2. Data preprocessing.
+
+### 2. Data preprocessing
+Preprocessing consists of a number of steps with the end goal of isolating the unloading part of the experiment. In practice, this means that Step 2 can be further decomposed into:
+
+* **2a.** Finding the point where the indentor comes into contact with the substrate. This determines the (0,0) point in the experiment. The function **offsetAndDriftCompensation** can often quite relibably determine this point. Note that **offsetAndDriftCompensation** overwrites the $xy$ matrix.
+    ```julia
+    # Find initial contact
+    xy , ~ , ~ , rampStartIdx, ~  = offsetAndDriftCompensation(xy)
+
+    # Plot
+    ctrl.plotMode && display(plot([xy[:,1]],[xy[:,2]]))
+    ```
+* **2b.** Finding the start of the hold. In all our experiments, the hold occurs at maximum load or maximum displacement. 
+
+    Note that **hyperParameters** is a structure supplied by you. You can check the values that **hyperParameters** should contain by typing ?hyperParameters when you have indentationTools.jl loaded.
+    
+    ```julia
+    # Determine the start of the hold time at circa max force.
+    if cmp( lowercase(hyperParameters.controlLoop) , "force") == 0
+        holdStartIdx = findStartOfHold(xy,"first")
+    elseif cmp( lowercase(hyperParameters.controlLoop) , "displacement") == 0
+        holdStartIdx = argmax(xy[:,2])
+    else
+        throw(DomainError( string(hyperParameters.controlLoop), "controlLoop setting not defined."))
+    end
+    ```
+
+
 3. Fitting of the slope

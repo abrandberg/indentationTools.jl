@@ -160,6 +160,7 @@ function modulusfitter(indentationSet::metaInfoExperimentalSeries,hyperParameter
         scatter!([xy[rampStartIdx,1]] , [xy[rampStartIdx,2]], label = "Start of ramp")
         scatter!([xy[holdStartIdx,1]] , [xy[holdStartIdx,2]], label = "Start of hold")
         scatter!([xy_unld1[unloadStartIdx,1]], [xy_unld1[unloadStartIdx,2]], label = "Start of unload")
+        xlims!( (-0.0 , Inf ), widen = true)
         savefig("$(indentationSet.targetDir)$(resultFile[1:end-4])_signal.png")
     end
 
